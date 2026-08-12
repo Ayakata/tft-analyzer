@@ -39,3 +39,15 @@ Consumes the same semantic states/actions as all other subsystems. Simulator sup
 
 ### Realtime
 Optional read-only consumer of current canonical state plus analyzer/model outputs. It is never required by recording, replay, post-game analysis, ML training or RL datasets.
+
+## Capture backend boundary
+
+Stage 1.1 defines WGC as the default HWND backend and MSS as a diagnostic
+fallback. `MatchSession` consumes only the backend contract.
+
+## Layout / ROI boundary (Stage 2.0)
+
+Perception modules must not hard-code pixel rectangles. They request named ROIs
+from a versioned `LayoutProfile` / `ROIRegistry`. Layout profiles use normalized
+coordinates and can vary independently by aspect ratio, UI scale or future TFT UI
+revision.

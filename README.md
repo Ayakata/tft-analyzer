@@ -1,64 +1,56 @@
 # TFT Analyzer
 
-Trajectory-first Teamfight Tactics match recorder and post-game analysis platform.
+Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL research platform.
 
-## Architectural rules
+## Status
 
-1. **Raw evidence is immutable. Derived data is rebuildable.**
-2. **Perception != game logic != analysis.**
-3. **All future consumers use the same domain contracts.**
-4. **Every derived artifact carries provenance/version information.**
-5. **Real-time advice is an optional consumer, never part of the core pipeline.**
+- Stage 0: domain/contracts - complete
+- Stage 1: recorder/replay - complete
+- Stage 1.1: HWND/WGC capture - complete
+- Stage 2.0: normalized layout + ROI debug - implemented
+- Stage 2.1: HUD OCR observations - next
 
-## Data pipeline
+## Install / update
+
+```powershell
+python -m pip install -e ".[dev]"
+pytest
+```
+
+## Capture
+
+```powershell
+tft-analyzer windows --process-regex "League"
+tft-analyzer record --handle <HWND> --backend wgc --no-fallback
+```
+
+## ROI debug
+
+Choose any real evidence frame:
+
+```powershell
+tft-analyzer roi-debug `
+  .\data\matches\<match_id>\evidence\frames\<frame>.png `
+  --open
+```
+
+Default profile:
 
 ```text
-Evidence -> Observation -> GameEvent -> GameState
-                                      |
-                                      +-> DecisionEpisode
-                                              |
-                     +------------------------+----------------------+
-                     |                        |                      |
-                  Analyzers                ML/Value              RL datasets
-                     |                        |                      |
-                  Findings              Counterfactuals        BC / Offline RL
-                     |
-                  Reports
-
-GameState + Findings/Policy
-          |
-          +-> optional realtime advisor
+configs/layouts/tft_16_9_default.yaml
 ```
 
-## Stage 0
+Output:
 
-Implemented:
-- versioned Pydantic domain models;
-- evidence / observation / event / state / action / decision contracts;
-- analyzer and transition-model protocols;
-- future real-time advisor protocol;
-- versioned match manifest;
-- config skeleton;
-- minimal CLI;
-- initial contract tests.
-
-Not implemented yet:
-- screen capture;
-- TFT recognition;
-- event inference;
-- persistent database;
-- Riot API integration;
-- analysis rules;
-- ML / RL.
-
-## Run
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-# PowerShell: .venv\Scripts\Activate.ps1
-
-pip install -e ".[dev]"
-pytest
-python -m tft_analyzer
+```text
+data/roi_debug/<image>_<profile>/
+├── overlay.png
+├── roi_manifest.json
+└── crops/
 ```
+
+The initial profile is calibrated on a real 1920x1080 match capture but stores
+normalized coordinates, so it can scale across 16:9 resolutions. Different UI
+scale/aspect-ratio layouts can be introduced as separate profiles later.
+
+See `docs/stage2_0.md`.

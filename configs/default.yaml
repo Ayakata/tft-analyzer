@@ -5,17 +5,33 @@ project:
   models_root: models
   game_data_root: game_data
 
+window:
+  title_regex: "League of Legends"
+  process_regex: "League of Legends"
+
 capture:
   enabled: false
+  backend: wgc
+  fallback_backend: mss
   target_fps: 4
+  first_frame_timeout_seconds: 4.0
+  capture_gap_after_seconds: 2.0
+  # null = do not request an optional WGC capability toggle.
+  # This is the compatibility-safe default for Windows 10.
+  cursor_capture: null
+  draw_border: null
   save_periodic_keyframes: true
   keyframe_interval_seconds: 10
   save_on_scene_change: true
-  save_low_confidence_evidence: true
+  min_scene_save_interval_seconds: 0.75
+  scene_change_threshold: 0.045
+  scene_signature_width: 160
+  scene_signature_height: 90
 
 perception:
   min_confidence: 0.70
   unknown_below_confidence: true
+  layout_profile: configs/layouts/tft_16_9_default.yaml
 
 tracking:
   min_event_confidence: 0.80

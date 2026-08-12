@@ -1,0 +1,65 @@
+from pathlib import Path
+
+import pytest
+from PIL import Image
+
+from tft_analyzer.perception.layout import (
+    LayoutMismatchError,
+    ROIRegistry,
+    build_roi_debug,
+)
+
+
+PROFILE = Path("configs/layouts/tft_16_9_default.yaml")
+
+
+def test_16_9_profile_loads_and_matches_reference():
+    registry = ROIRegistry.from_yaml(PROFILE)
+    assert registry.profile.profile_id == "tft_16_9_default_v1"
+    assert registry.profile.matches(1920, 1080)
+    assert registry.profile.matches(1600, 900)
+    assert "gold_value" in registry.names()
+    assert "shop_4_portrait" in registry.names()
+
+
+def test_reference_pixel_resolution_is_stable():
+    registry = ROIRegistry.from_yaml(PROFILE)
+
+    gold = registry.resolve("gold_value", 1920, 1080)
+    assert gold.box == (949, 870, 1019, 914)
+
+    shop0 = registry.resolve("shop_0_card", 1920, 1080)
+    assert shop0.box == (480, 929, 674, 1079)
+
+
+def test_normalized_roi_scales_to_1600x900():
+    registry = ROIRegistry.from_yaml(PROFILE)
+    shop0 = registry.resolve("shop_0_card", 1600, 900)
+    assert shop0.left == 400
+    assert shop0.top == 774
+    assert shop0.width in {161, 162}
+    assert shop0.height == 125
+
+
+def test_wrong_aspect_ratio_is_rejected():
+    registry = ROIRegistry.from_yaml(PROFILE)
+    with pytest.raises(LayoutMismatchError):
+        registry.resolve("gold_value", 1600, 1200)
+
+
+def test_roi_debug_writes_overlay_crops_and_manifest(tmp_path):
+    image_path = tmp_path / "frame.png"
+    Image.new("RGB", (1920, 1080), (20, 30, 40)).save(image_path)
+
+    registry = ROIRegistry.from_yaml(PROFILE)
+    result = build_roi_debug(
+        image_path,
+        registry,
+        tmp_path / "debug",
+        selected_names=["stage_value", "gold_value", "shop_0_card"],
+    )
+
+    assert result["roi_count"] == 3
+    assert Path(result["overlay"]).exists()
+    assert Path(result["manifest"]).exists()
+    assert (Path(result["crops_dir"]) / "gold_value.png").exists()

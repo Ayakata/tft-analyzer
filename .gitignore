@@ -1,0 +1,148 @@
+# ============================================================
+# TFT Analyzer
+# ============================================================
+
+# ----------------------------
+# Python bytecode / caches
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ----------------------------
+# Virtual environments
+# ----------------------------
+.venv/
+venv/
+venv*/
+env/
+ENV/
+
+# ----------------------------
+# Packaging / build artifacts
+# ----------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ----------------------------
+# IDE / editor
+# ----------------------------
+.vscode/
+.idea/
+*.code-workspace
+
+# ----------------------------
+# OS-generated files
+# ----------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------------------
+# Local secrets / machine config
+# ----------------------------
+.env
+.env.*
+!.env.example
+
+configs/local.yaml
+configs/*.local.yaml
+configs/*_local.yaml
+
+# Riot/API keys or local credentials
+*secret*
+*credentials*
+*.key
+
+# ----------------------------
+# Logs / temp files
+# ----------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ----------------------------
+# Runtime captures and datasets
+# ----------------------------
+data/matches/**
+data/datasets/**
+data/cache/**
+data/roi_debug/**
+data/debug/**
+data/exports/**
+
+# Keep placeholder files if present.
+!data/**/.gitkeep
+
+# Common ad-hoc capture/debug folders.
+captures/
+screenshots/
+debug/
+outputs/
+artifacts/
+runs/
+
+# ----------------------------
+# Downloaded / generated TFT game data
+# ----------------------------
+game_data/**
+!game_data/.gitkeep
+!game_data/**/.gitkeep
+!game_data/README.md
+
+# ----------------------------
+# ML models / checkpoints / inference artifacts
+# ----------------------------
+models/**
+!models/.gitkeep
+!models/**/.gitkeep
+!models/README.md
+
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.engine
+*.trt
+*.plan
+*.tflite
+*.pb
+*.h5
+*.joblib
+*.pkl
+
+# ----------------------------
+# Large analytical/generated data
+# ----------------------------
+*.parquet
+*.feather
+*.arrow
+
+# ----------------------------
+# Jupyter
+# ----------------------------
+.ipynb_checkpoints/
+
+# NOTE:
+# Do NOT ignore image extensions globally.
+# Small curated fixtures such as tests/golden_frames/*.png are intended
+# to remain commit-able, while raw match screenshots are already excluded
+# by data/matches/** and data/roi_debug/** above.

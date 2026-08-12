@@ -1,0 +1,147 @@
+schema_version: 1
+profile_id: tft_16_9_default_v1
+description: >-
+  Initial TFT 16:9 HUD layout calibrated from a real 1920x1080 match capture.
+  Coordinates are normalized and resolution-independent, but this profile still
+  assumes the default/similar in-game UI scale.
+aspect_ratio: 1.7777777778
+aspect_ratio_tolerance: 0.02
+reference_width: 1920
+reference_height: 1080
+ui_scale_hint: default
+metadata:
+  calibrated_on: 1920x1080
+  calibration_status: initial_manual
+  notes: Review with roi-debug on several planning/combat/augment frames before OCR training.
+
+rois:
+  stage_value:
+    x: 0.40104167
+    y: 0.00370370
+    w: 0.03541667
+    h: 0.03518519
+    group: hud
+    purpose: OCR stage/round value such as 3-3.
+
+  phase_banner:
+    x: 0.45468750
+    y: 0.14444444
+    w: 0.09114583
+    h: 0.04629630
+    group: hud
+    purpose: Optional scene/phase cue such as Planning.
+
+  level_value:
+    x: 0.13958333
+    y: 0.80740741
+    w: 0.04270833
+    h: 0.03703704
+    group: economy
+    purpose: OCR player level text such as Lvl. 5.
+
+  xp_value:
+    x: 0.20729167
+    y: 0.80740741
+    w: 0.03020833
+    h: 0.03703704
+    group: economy
+    purpose: OCR XP text such as 12/20.
+
+  gold_value:
+    x: 0.49427083
+    y: 0.80555556
+    w: 0.03645833
+    h: 0.04074074
+    group: economy
+    purpose: OCR current gold value.
+
+  player_hp:
+    x: 0.91770833
+    y: 0.44629630
+    w: 0.04375000
+    h: 0.05370370
+    group: hud
+    purpose: OCR the local player's large HP value in the right player list.
+
+  shop_region:
+    x: 0.24843750
+    y: 0.85740741
+    w: 0.52291667
+    h: 0.14259259
+    group: shop
+    purpose: Whole five-card shop strip; useful for change detection.
+
+  shop_0_card:
+    x: 0.25000000
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.13888889
+    group: shop
+    purpose: Full shop card 0.
+  shop_0_portrait:
+    x: 0.25000000
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.10000000
+    group: shop_portrait
+    purpose: Champion visual area for shop slot 0.
+
+  shop_1_card:
+    x: 0.35468750
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.13888889
+    group: shop
+    purpose: Full shop card 1.
+  shop_1_portrait:
+    x: 0.35468750
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.10000000
+    group: shop_portrait
+    purpose: Champion visual area for shop slot 1.
+
+  shop_2_card:
+    x: 0.45937500
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.13888889
+    group: shop
+    purpose: Full shop card 2.
+  shop_2_portrait:
+    x: 0.45937500
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.10000000
+    group: shop_portrait
+    purpose: Champion visual area for shop slot 2.
+
+  shop_3_card:
+    x: 0.56458333
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.13888889
+    group: shop
+    purpose: Full shop card 3.
+  shop_3_portrait:
+    x: 0.56458333
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.10000000
+    group: shop_portrait
+    purpose: Champion visual area for shop slot 3.
+
+  shop_4_card:
+    x: 0.66875000
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.13888889
+    group: shop
+    purpose: Full shop card 4.
+  shop_4_portrait:
+    x: 0.66875000
+    y: 0.86018519
+    w: 0.10104167
+    h: 0.10000000
+    group: shop_portrait
+    purpose: Champion visual area for shop slot 4.
