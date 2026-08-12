@@ -33,7 +33,7 @@ It contains:
 - level;
 - XP;
 - gold;
-- player HP;
+- dynamic `players_panel` search area (player HP is not a static ROI);
 - whole shop strip;
 - five full shop cards;
 - five portrait subregions.
@@ -73,5 +73,7 @@ Run `roi-debug` on several real match frames from different phases. The boxes
 must consistently cover the intended UI elements. Small tuning changes belong in
 the YAML profile, not in Python code.
 
-Only after this visual contract is stable should Stage 2.1 implement OCR for
-stage/gold/level/XP/HP.
+The static HUD/shop contract is now considered validated. `player_hp` was removed
+from the static profile because the local player row moves vertically with the
+right-side ranking list. Stage 2.1 will implement OCR for stage/gold/level/XP;
+player HP will later be extracted by `PlayerListRecognizer` from `players_panel`.

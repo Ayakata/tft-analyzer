@@ -54,3 +54,8 @@ normalized coordinates, so it can scale across 16:9 resolutions. Different UI
 scale/aspect-ratio layouts can be introduced as separate profiles later.
 
 See `docs/stage2_0.md`.
+
+
+## Layout patch 0.3.1
+
+The local player HP is no longer a fixed ROI. The 16:9 profile exposes `players_panel`; a future dynamic recognizer will locate the self row before reading HP.

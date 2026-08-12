@@ -15,11 +15,13 @@ PROFILE = Path("configs/layouts/tft_16_9_default.yaml")
 
 def test_16_9_profile_loads_and_matches_reference():
     registry = ROIRegistry.from_yaml(PROFILE)
-    assert registry.profile.profile_id == "tft_16_9_default_v1"
+    assert registry.profile.profile_id == "tft_16_9_default_v2"
     assert registry.profile.matches(1920, 1080)
     assert registry.profile.matches(1600, 900)
     assert "gold_value" in registry.names()
     assert "shop_4_portrait" in registry.names()
+    assert "players_panel" in registry.names()
+    assert "player_hp" not in registry.names()
 
 
 def test_reference_pixel_resolution_is_stable():
@@ -63,3 +65,12 @@ def test_roi_debug_writes_overlay_crops_and_manifest(tmp_path):
     assert Path(result["overlay"]).exists()
     assert Path(result["manifest"]).exists()
     assert (Path(result["crops_dir"]) / "gold_value.png").exists()
+
+
+def test_players_panel_covers_dynamic_player_list():
+    registry = ROIRegistry.from_yaml(PROFILE)
+    panel = registry.resolve("players_panel", 1920, 1080)
+    assert panel.left == 1670
+    assert panel.top == 167
+    assert panel.right == 1920
+    assert panel.bottom == 805

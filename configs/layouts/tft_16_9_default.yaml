@@ -1,5 +1,5 @@
 schema_version: 1
-profile_id: tft_16_9_default_v1
+profile_id: tft_16_9_default_v2
 description: >-
   Initial TFT 16:9 HUD layout calibrated from a real 1920x1080 match capture.
   Coordinates are normalized and resolution-independent, but this profile still
@@ -11,8 +11,8 @@ reference_height: 1080
 ui_scale_hint: default
 metadata:
   calibrated_on: 1920x1080
-  calibration_status: initial_manual
-  notes: Review with roi-debug on several planning/combat/augment frames before OCR training.
+  calibration_status: validated_static_rois
+  notes: Static HUD/shop ROIs validated on real frames. Player HP is dynamic and must be localized inside players_panel.
 
 rois:
   stage_value:
@@ -55,13 +55,15 @@ rois:
     group: economy
     purpose: OCR current gold value.
 
-  player_hp:
-    x: 0.91770833
-    y: 0.44629630
-    w: 0.04375000
-    h: 0.05370370
-    group: hud
-    purpose: OCR the local player's large HP value in the right player list.
+  players_panel:
+    x: 0.87000000
+    y: 0.15500000
+    w: 0.13000000
+    h: 0.59000000
+    group: players
+    purpose: >-
+      Dynamic player-list search area. Future PlayerListRecognizer locates the
+      local player's row inside this panel, then extracts HP relative to that row.
 
   shop_region:
     x: 0.24843750
