@@ -1,5 +1,5 @@
 schema_version: 1
-profile_id: tft_16_9_default_v2
+profile_id: tft_16_9_default_v4
 description: >-
   Initial TFT 16:9 HUD layout calibrated from a real 1920x1080 match capture.
   Coordinates are normalized and resolution-independent, but this profile still
@@ -11,8 +11,8 @@ reference_height: 1080
 ui_scale_hint: default
 metadata:
   calibrated_on: 1920x1080
-  calibration_status: validated_static_rois
-  notes: Static HUD/shop ROIs validated on real frames. Player HP is dynamic and must be localized inside players_panel.
+  calibration_status: validated_static_rois_with_stage_search_region
+  notes: Static HUD/shop ROIs validated on real frames. Stage 2.1.2 adds stage search/localization because early 1-x rounds render farther right. Player HP remains dynamic.
 
 rois:
   stage_value:
@@ -22,6 +22,24 @@ rois:
     h: 0.03518519
     group: hud
     purpose: OCR stage/round value such as 3-3.
+
+  # Tight OCR-only HUD ROIs calibrated from real 1920x1080 crops.
+  # Wider *_value ROIs below are intentionally retained as visual context.
+  stage_search_region:
+    x: 0.38854167
+    y: 0.00370370
+    w: 0.05520833
+    h: 0.03055556
+    group: hud_ocr
+    purpose: Search region for stage/round text. Early 1-x rounds render slightly farther right than later stages.
+
+  stage_text:
+    x: 0.40104167
+    y: 0.00648148
+    w: 0.02083333
+    h: 0.02222222
+    group: hud_ocr
+    purpose: Tight text-only OCR area for stage/round, excluding the lower HUD border.
 
   phase_banner:
     x: 0.45468750
@@ -39,6 +57,14 @@ rois:
     group: economy
     purpose: OCR player level text such as Lvl. 5.
 
+  level_text:
+    x: 0.14270833
+    y: 0.81481481
+    w: 0.03229167
+    h: 0.02222222
+    group: economy_ocr
+    purpose: Tight OCR area for level text, excluding the upper gold border.
+
   xp_value:
     x: 0.20729167
     y: 0.80740741
@@ -47,6 +73,14 @@ rois:
     group: economy
     purpose: OCR XP text such as 12/20.
 
+  xp_text:
+    x: 0.21354167
+    y: 0.81851852
+    w: 0.02083333
+    h: 0.02037037
+    group: economy_ocr
+    purpose: Tight OCR area for XP current/required, excluding decorative frame edges.
+
   gold_value:
     x: 0.49427083
     y: 0.80555556
@@ -54,6 +88,14 @@ rois:
     h: 0.04074074
     group: economy
     purpose: OCR current gold value.
+
+  gold_number:
+    x: 0.50104167
+    y: 0.81851852
+    w: 0.02291667
+    h: 0.02037037
+    group: economy_ocr
+    purpose: Tight centered OCR area for current gold digits only.
 
   players_panel:
     x: 0.87000000

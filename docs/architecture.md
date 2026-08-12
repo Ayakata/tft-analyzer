@@ -51,3 +51,18 @@ Perception modules must not hard-code pixel rectangles. They request named ROIs
 from a versioned `LayoutProfile` / `ROIRegistry`. Layout profiles use normalized
 coordinates and can vary independently by aspect ratio, UI scale or future TFT UI
 revision.
+
+
+## HUD perception boundary
+
+Stage 2.1 introduces an OCR adapter boundary. HUD recognizers consume ROI crops
+through the `OCREngine` protocol and emit canonical `Observation` objects.
+RapidOCR is the first backend, but tracking and downstream analysis do not
+depend on RapidOCR itself.
+
+
+## Presence confidence semantics
+
+As of 0.4.3, HUD presence confidence is conjunctive: the weakest required
+presence criterion controls the score. This keeps diagnostic confidence
+consistent with the hard presence decision and prevents `ABSENT(1.000)`.

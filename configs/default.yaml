@@ -31,6 +31,29 @@ capture:
 perception:
   min_confidence: 0.70
   unknown_below_confidence: true
+
+  hud:
+    engine: rapidocr
+    producer_version: hud-rapidocr-0.4.3
+    min_observation_confidence: 0.45
+    primary_upscale: 4
+    fallback_upscale: 5
+    horizontal_padding_ratio: 0.16
+    binary_threshold: 150
+
+    presence:
+      enabled: true
+      min_dark_fraction: 0.20
+      min_edge_density: 0.015
+      min_bright_fraction: 0.002
+      stage_min_edge_density: 0.010
+
+    stage_localizer:
+      candidate_width_px_at_1920: 56
+      candidate_height_px_at_1080: 28
+      x_offsets_px_at_1920: [-20, -10, 0, 10, 20, 30]
+      y_offset_px_at_1080: 0
+    write_failed_attempts: true
   layout_profile: configs/layouts/tft_16_9_default.yaml
 
 tracking:

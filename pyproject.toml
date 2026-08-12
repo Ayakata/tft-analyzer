@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tft-analyzer"
-version = "0.3.1"
+version = "0.4.3"
 description = "Trajectory-first TFT match recorder and post-game analyzer"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,6 +16,8 @@ dependencies = [
     "psutil>=5.9,<7",
     "pywin32>=306; platform_system == 'Windows'",
     "windows-capture==2.0.1; platform_system == 'Windows'",
+    "rapidocr==3.9.2",
+    "onnxruntime>=1.20,<2",
 ]
 
 [project.optional-dependencies]

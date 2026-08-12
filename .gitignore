@@ -85,6 +85,7 @@ data/matches/**
 data/datasets/**
 data/cache/**
 data/roi_debug/**
+data/hud_debug/**
 data/debug/**
 data/exports/**
 

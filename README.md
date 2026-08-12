@@ -7,17 +7,21 @@ Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL
 - Stage 0: domain/contracts - complete
 - Stage 1: recorder/replay - complete
 - Stage 1.1: HWND/WGC capture - complete
-- Stage 2.0: normalized layout + ROI debug - implemented
-- Stage 2.1: HUD OCR observations - next
+- Stage 2.0: normalized layout / ROI contract - complete
+- Stage 2.1: HUD perception - implemented\n- Stage 2.1.1: tight HUD OCR + accepted metrics - complete
+- Stage 2.1.2: HUD presence + dynamic stage localization - complete
+- Stage 2.1.3: presence confidence semantics cleanup - implemented
 
-## Install / update
+Current version: **0.4.3**
+
+## Install/update on Windows
 
 ```powershell
 python -m pip install -e ".[dev]"
 pytest
 ```
 
-## Capture
+## Recorder
 
 ```powershell
 tft-analyzer windows --process-regex "League"
@@ -26,36 +30,62 @@ tft-analyzer record --handle <HWND> --backend wgc --no-fallback
 
 ## ROI debug
 
-Choose any real evidence frame:
+```powershell
+tft-analyzer roi-debug <frame.png> --open
+```
+
+## HUD OCR debug
 
 ```powershell
-tft-analyzer roi-debug `
-  .\data\matches\<match_id>\evidence\frames\<frame>.png `
-  --open
+tft-analyzer hud-debug <frame.png>
 ```
 
-Default profile:
+## Process a saved match
+
+Smoke test:
+
+```powershell
+tft-analyzer perceive-hud .\data\matches\<match_id> --limit 20
+```
+
+Full saved evidence:
+
+```powershell
+tft-analyzer perceive-hud .\data\matches\<match_id>
+```
+
+See `docs/stage2_1.md`.
+
+
+## 0.4.1 baseline comparison
+
+Re-run the same first 20 saved evidence frames:
+
+```powershell
+tft-analyzer perceive-hud .\data\matches\<match_id> --limit 20
+```
+
+The console now reports both `parsed` and `accepted`.
+
+
+## 0.4.2
+
+Run the same 20-frame baseline:
+
+```powershell
+tft-analyzer perceive-hud .\data\matches\<match_id> --limit 20
+```
+
+The summary now reports `present`, `parsed`, and `accepted` separately.
+
+
+## 0.4.3
+
+Presence diagnostics are now semantically consistent:
 
 ```text
-configs/layouts/tft_16_9_default.yaml
+PRESENT => score 1.0
+ABSENT  => score < 1.0
 ```
 
-Output:
-
-```text
-data/roi_debug/<image>_<profile>/
-├── overlay.png
-├── roi_manifest.json
-└── crops/
-```
-
-The initial profile is calibrated on a real 1920x1080 match capture but stores
-normalized coordinates, so it can scale across 16:9 resolutions. Different UI
-scale/aspect-ratio layouts can be introduced as separate profiles later.
-
-See `docs/stage2_0.md`.
-
-
-## Layout patch 0.3.1
-
-The local player HP is no longer a fixed ROI. The 16:9 profile exposes `players_panel`; a future dynamic recognizer will locate the self row before reading HP.
+No OCR/ROI behavior changed.

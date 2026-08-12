@@ -11,6 +11,12 @@ from tft_analyzer.capture.session import MatchSession, RecorderSettings
 from tft_analyzer.capture.window_locator import WindowsWindowLocator
 from tft_analyzer.replay import build_replay_html
 from tft_analyzer.perception.layout import ROIRegistry, build_roi_debug
+from tft_analyzer.perception.ocr import RapidOCREngine
+from tft_analyzer.perception.hud.debug import build_hud_debug
+from tft_analyzer.perception.hud.pipeline import process_match_hud
+from tft_analyzer.perception.hud.recognizer import HUDRecognizer
+from tft_analyzer.perception.hud.presence import HUDPresenceGate
+from tft_analyzer.perception.hud.stage_localizer import StageLocalizer
 
 from .config import load_yaml
 
@@ -198,6 +204,190 @@ def cmd_roi_debug(args):
 
     return 0
 
+
+def _build_hud_recognizer(args, cfg):
+    perception_cfg = cfg.get("perception", {})
+    hud_cfg = perception_cfg.get("hud", {})
+
+    profile_path = Path(
+        getattr(args, "profile", None)
+        or "configs/layouts/tft_16_9_default.yaml"
+    )
+    registry = ROIRegistry.from_yaml(profile_path)
+
+    engine_name = str(hud_cfg.get("engine", "rapidocr")).lower()
+    if engine_name != "rapidocr":
+        raise ValueError(
+            f"Unsupported HUD OCR engine {engine_name!r}. "
+            "Stage 2.1 currently supports: rapidocr."
+        )
+
+    presence_cfg = hud_cfg.get("presence", {})
+    localizer_cfg = hud_cfg.get("stage_localizer", {})
+
+    presence_gate = None
+    if bool(presence_cfg.get("enabled", True)):
+        presence_gate = HUDPresenceGate(
+            min_dark_fraction=float(
+                presence_cfg.get("min_dark_fraction", 0.20)
+            ),
+            min_edge_density=float(
+                presence_cfg.get("min_edge_density", 0.015)
+            ),
+            min_bright_fraction=float(
+                presence_cfg.get("min_bright_fraction", 0.002)
+            ),
+            stage_min_edge_density=float(
+                presence_cfg.get("stage_min_edge_density", 0.010)
+            ),
+        )
+
+    stage_localizer = StageLocalizer(
+        candidate_width_px_at_1920=int(
+            localizer_cfg.get("candidate_width_px_at_1920", 56)
+        ),
+        candidate_height_px_at_1080=int(
+            localizer_cfg.get("candidate_height_px_at_1080", 28)
+        ),
+        x_offsets_px_at_1920=tuple(
+            int(x) for x in localizer_cfg.get(
+                "x_offsets_px_at_1920",
+                [-20, -10, 0, 10, 20, 30],
+            )
+        ),
+        y_offset_px_at_1080=int(
+            localizer_cfg.get("y_offset_px_at_1080", 0)
+        ),
+    )
+
+    return HUDRecognizer(
+        registry=registry,
+        ocr_engine=RapidOCREngine(),
+        producer_version=str(
+            hud_cfg.get("producer_version", "hud-rapidocr-0.4.3")
+        ),
+        min_observation_confidence=float(
+            hud_cfg.get("min_observation_confidence", 0.45)
+        ),
+        primary_upscale=int(hud_cfg.get("primary_upscale", 4)),
+        fallback_upscale=int(hud_cfg.get("fallback_upscale", 5)),
+        horizontal_padding_ratio=float(
+            hud_cfg.get("horizontal_padding_ratio", 0.16)
+        ),
+        binary_threshold=int(
+            hud_cfg.get("binary_threshold", 150)
+        ),
+        presence_gate=presence_gate,
+        stage_localizer=stage_localizer,
+    )
+
+
+def cmd_hud_debug(args):
+    cfg = load_yaml(Path(args.config))
+    recognizer = _build_hud_recognizer(args, cfg)
+
+    image_path = Path(args.image)
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    if args.output:
+        output_dir = Path(args.output)
+    else:
+        output_dir = Path("data/hud_debug") / (
+            f"{image_path.stem}_{recognizer.registry.profile.profile_id}"
+        )
+
+    debug = build_hud_debug(
+        image_path,
+        output_dir,
+        recognizer,
+    )
+    result = debug["result"]
+
+    print(f"[INFO] Image:   {image_path}")
+    print(f"[INFO] Profile: {recognizer.registry.profile.profile_id}")
+    print(f"[INFO] Engine:  {recognizer.ocr_engine.name}")
+
+    for field in ("stage", "gold", "level", "xp"):
+        best = result.best_attempt(field)
+        if best is None:
+            print(f"{field:>7}: no attempt")
+            continue
+
+        parsed = (
+            best.parsed.normalized_text
+            if best.parsed is not None
+            else "INVALID"
+        )
+        status = (
+            "ACCEPT"
+            if best.parsed is not None
+            and best.confidence >= recognizer.min_observation_confidence
+            else ("LOW" if best.parsed is not None else "INVALID")
+        )
+        candidate = (
+            f" candidate={best.candidate_name}"
+            if best.candidate_name
+            else ""
+        )
+        presence_label = (
+            "PRESENT" if best.presence_passed else "ABSENT"
+        )
+        print(
+            f"{field:>7}: [{status:<7}] "
+            f"raw={best.raw_text!r:<14} "
+            f"parsed={parsed:<8} "
+            f"ocr={best.ocr_score:.3f} "
+            f"conf={best.confidence:.3f} "
+            f"presence={presence_label}({best.presence_score:.3f}) "
+            f"variant={best.variant}"
+            f"{candidate}"
+        )
+
+    print(f"[OK] Result:       {debug['result_path']}")
+    print(f"[OK] Crops:        {debug['crops_dir']}")
+    print(f"[OK] Preprocessed: {debug['preprocessed_dir']}")
+    return 0
+
+
+def cmd_perceive_hud(args):
+    cfg = load_yaml(Path(args.config))
+    recognizer = _build_hud_recognizer(args, cfg)
+
+    match_dir = Path(args.match_dir)
+    if not match_dir.exists():
+        raise FileNotFoundError(f"Match directory not found: {match_dir}")
+
+    summary = process_match_hud(
+        match_dir,
+        recognizer,
+        stride=args.stride,
+        limit=args.limit,
+    )
+
+    print(f"[INFO] Match:     {match_dir}")
+    print(f"[INFO] Producer:  {summary['producer_version']}")
+    print(f"[OK] Frames:     {summary['processed_frames']}")
+    print(f"[OK] Observations:{summary['observation_count']}")
+
+    for field, metrics in summary["fields"].items():
+        present = metrics["present"]
+        print(
+            f"  {field:<6} "
+            f"present={present}/{metrics['frames']}  "
+            f"parsed={metrics['parse_valid']}/{present} "
+            f"({metrics['parse_rate_when_present'] * 100:5.1f}%)  "
+            f"accepted={metrics['accepted']}/{present} "
+            f"({metrics['accepted_rate_when_present'] * 100:5.1f}%)  "
+            f"mean_acc_conf={metrics['mean_accepted_confidence']:.3f}"
+        )
+
+    print(f"[OK] JSONL:      {summary['observations_path']}")
+    print(f"[OK] Attempts:   {summary['attempts_path']}")
+    print(f"[OK] Summary:    {summary['summary_path']}")
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="tft-analyzer")
     parser.add_argument("--version", action="version", version=__version__)
@@ -250,6 +440,43 @@ def build_parser():
     )
     p.add_argument("--open", action="store_true", help="Open overlay after creation.")
     p.set_defaults(func=cmd_roi_debug)
+
+
+    p = sub.add_parser(
+        "hud-debug",
+        help="Run Stage 2.1 HUD OCR on one captured frame.",
+    )
+    p.add_argument("image", help="Captured TFT frame PNG/JPEG.")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument(
+        "--profile",
+        default="configs/layouts/tft_16_9_default.yaml",
+    )
+    p.add_argument("--output")
+    p.set_defaults(func=cmd_hud_debug)
+
+    p = sub.add_parser(
+        "perceive-hud",
+        help="Run HUD perception over saved match evidence.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument(
+        "--profile",
+        default="configs/layouts/tft_16_9_default.yaml",
+    )
+    p.add_argument(
+        "--stride",
+        type=int,
+        default=1,
+        help="Process every Nth saved evidence frame.",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        help="Stop after this many processed evidence frames.",
+    )
+    p.set_defaults(func=cmd_perceive_hud)
 
     return parser
 
