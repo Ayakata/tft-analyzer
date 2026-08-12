@@ -15,6 +15,7 @@ from .game import (
 from .manifest import MatchManifest, PipelineVersions
 from .observations import Observation
 from .transitions import TransitionSample
+from .tracking import TrackedField, TrackedHUDState, TrackingDecision
 
 __all__ = [
     "BoardPosition",
@@ -31,6 +32,9 @@ __all__ = [
     "SchemaModel",
     "SemanticAction",
     "ShopState",
+    "TrackedField",
+    "TrackedHUDState",
+    "TrackingDecision",
     "TransitionSample",
     "UnitInstance",
 ]

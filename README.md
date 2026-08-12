@@ -10,9 +10,11 @@ Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL
 - Stage 2.0: normalized layout / ROI contract - complete
 - Stage 2.1: HUD perception - implemented\n- Stage 2.1.1: tight HUD OCR + accepted metrics - complete
 - Stage 2.1.2: HUD presence + dynamic stage localization - complete
-- Stage 2.1.3: presence confidence semantics cleanup - implemented
+- Stage 2.1.3: presence confidence semantics cleanup - complete
+- Stage 2.2: temporal fusion / HUD tracking - complete
+- Stage 2.2.1: tracker stabilization - implemented
 
-Current version: **0.4.3**
+Current version: **0.5.1**
 
 ## Install/update on Windows
 
@@ -89,3 +91,19 @@ ABSENT  => score < 1.0
 ```
 
 No OCR/ROI behavior changed.
+
+
+## HUD temporal tracking
+
+```powershell
+tft-analyzer track-hud .\data\matches\<match_id> --timeline
+```
+
+The tracker automatically consumes the latest versioned HUD observation JSONL
+and creates a stable timeline with provenance, freshness and rejection
+diagnostics.
+
+
+## 0.5.1 tracker stabilization
+
+Tracked HUD values are semantic-only. Freshness defaults are now stage/level 45s and gold/xp 15s.

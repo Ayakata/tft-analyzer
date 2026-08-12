@@ -60,6 +60,32 @@ tracking:
   min_event_confidence: 0.80
   temporal_confirmation_frames: 2
 
+  hud:
+    producer_version: hud-state-tracker-0.5.1
+    input_observation_glob: hud-rapidocr-*.jsonl
+
+    # Missing observations are carried only while sufficiently fresh.
+    max_age_seconds:
+      stage: 45.0
+      gold: 15.0
+      level: 45.0
+      xp: 15.0
+
+    # Effective confidence decays linearly from the original observation
+    # confidence to zero at max_age_seconds.
+    confidence_decay: linear
+
+    constraints:
+      reject_stage_regression: true
+      max_stage_code_jump_without_confirmation: 12
+
+      reject_level_regression: true
+      max_level_jump_without_confirmation: 2
+
+      reject_xp_regression_same_requirement: true
+
+    suspicious_confirmation_count: 2
+
 storage:
   observations_format: jsonl
   events_format: jsonl

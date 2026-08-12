@@ -66,3 +66,20 @@ depend on RapidOCR itself.
 As of 0.4.3, HUD presence confidence is conjunctive: the weakest required
 presence criterion controls the score. This keeps diagnostic confidence
 consistent with the hard presence decision and prevents `ABSENT(1.000)`.
+
+
+## Temporal fusion boundary
+
+Stage 2.2 introduces `TrackedHUDState` between perception and semantic event
+extraction. A tracked state is derived and rebuildable. It may carry recent
+values across missing observations, but every carried value preserves the exact
+source observation/evidence and its age.
+
+Tracking rejects domain-impossible regressions but does not yet decide why a
+valid state change happened. That semantic responsibility remains in the event
+detector.
+
+
+## Canonical tracked values
+
+As of 0.5.1, temporal tracking stores only semantic game values. Perception metadata remains in source observations and provenance, but is excluded from equality and transition logic.

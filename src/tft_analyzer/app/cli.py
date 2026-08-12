@@ -10,6 +10,11 @@ from tft_analyzer.capture.scene_change import SceneChangeDetector
 from tft_analyzer.capture.session import MatchSession, RecorderSettings
 from tft_analyzer.capture.window_locator import WindowsWindowLocator
 from tft_analyzer.replay import build_replay_html
+from tft_analyzer.tracking.hud import (
+    HUDTrackerSettings,
+    track_match_hud,
+)
+from tft_analyzer.tracking.hud.timeline import format_hud_timeline
 from tft_analyzer.perception.layout import ROIRegistry, build_roi_debug
 from tft_analyzer.perception.ocr import RapidOCREngine
 from tft_analyzer.perception.hud.debug import build_hud_debug
@@ -388,6 +393,137 @@ def cmd_perceive_hud(args):
     return 0
 
 
+
+def _build_hud_tracker_settings(cfg):
+    tracking_cfg = cfg.get("tracking", {})
+    hud_cfg = tracking_cfg.get("hud", {})
+    constraints_cfg = hud_cfg.get("constraints", {})
+
+    max_age = hud_cfg.get("max_age_seconds", {})
+
+    return HUDTrackerSettings(
+        producer_version=str(
+            hud_cfg.get(
+                "producer_version",
+                "hud-state-tracker-0.5.1",
+            )
+        ),
+        max_age_seconds={
+            "stage": float(max_age.get("stage", 45.0)),
+            "gold": float(max_age.get("gold", 15.0)),
+            "level": float(max_age.get("level", 45.0)),
+            "xp": float(max_age.get("xp", 15.0)),
+        },
+        reject_stage_regression=bool(
+            constraints_cfg.get(
+                "reject_stage_regression",
+                True,
+            )
+        ),
+        max_stage_code_jump_without_confirmation=int(
+            constraints_cfg.get(
+                "max_stage_code_jump_without_confirmation",
+                12,
+            )
+        ),
+        reject_level_regression=bool(
+            constraints_cfg.get(
+                "reject_level_regression",
+                True,
+            )
+        ),
+        max_level_jump_without_confirmation=int(
+            constraints_cfg.get(
+                "max_level_jump_without_confirmation",
+                2,
+            )
+        ),
+        reject_xp_regression_same_requirement=bool(
+            constraints_cfg.get(
+                "reject_xp_regression_same_requirement",
+                True,
+            )
+        ),
+        suspicious_confirmation_count=int(
+            hud_cfg.get(
+                "suspicious_confirmation_count",
+                2,
+            )
+        ),
+    )
+
+
+def cmd_track_hud(args):
+    cfg = load_yaml(Path(args.config))
+    settings = _build_hud_tracker_settings(cfg)
+
+    match_dir = Path(args.match_dir)
+    tracking_cfg = cfg.get("tracking", {}).get("hud", {})
+    pattern = str(
+        tracking_cfg.get(
+            "input_observation_glob",
+            "hud-rapidocr-*.jsonl",
+        )
+    )
+
+    summary = track_match_hud(
+        match_dir,
+        settings,
+        observations_path=(
+            Path(args.observations)
+            if args.observations
+            else None
+        ),
+        observation_glob=pattern,
+    )
+
+    print(f"[INFO] Match:        {match_dir}")
+    print(f"[INFO] Tracker:      {summary['tracker_version']}")
+    print(f"[INFO] Observations: {summary['input_observations_path']}")
+    print(f"[OK] States:         {summary['state_count']}")
+    print(f"[OK] Decisions:      {summary['decision_count']}")
+
+    print("[INFO] Decision actions:")
+    for action, count in sorted(summary["decision_actions"].items()):
+        print(f"  {action:<10} {count}")
+
+    print("[INFO] Field changes/statuses:")
+    for field in ("stage", "gold", "level", "xp"):
+        statuses = summary["field_status_counts"].get(field, {})
+        print(
+            f"  {field:<6} changes={summary['field_value_changes'].get(field, 0):<4} "
+            f"observed={statuses.get('observed', 0):<4} "
+            f"carried={statuses.get('carried', 0):<4} "
+            f"stale={statuses.get('stale', 0):<4} "
+            f"unknown={statuses.get('unknown', 0):<4}"
+        )
+
+    print(f"[OK] States JSONL:   {summary['states_path']}")
+    print(f"[OK] Decisions:      {summary['decisions_path']}")
+    print(f"[OK] Summary:        {summary['summary_path']}")
+
+    if args.timeline:
+        print()
+        print(
+            format_hud_timeline(
+                summary["states_path"],
+                limit=args.timeline_limit,
+            )
+        )
+
+    return 0
+
+
+def cmd_hud_timeline(args):
+    print(
+        format_hud_timeline(
+            Path(args.states),
+            limit=args.limit,
+        )
+    )
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="tft-analyzer")
     parser.add_argument("--version", action="version", version=__version__)
@@ -477,6 +613,37 @@ def build_parser():
         help="Stop after this many processed evidence frames.",
     )
     p.set_defaults(func=cmd_perceive_hud)
+
+
+    p = sub.add_parser(
+        "track-hud",
+        help="Fuse HUD observations into a stable temporal state timeline.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument(
+        "--observations",
+        help="Explicit observation JSONL. Default: latest hud-rapidocr file.",
+    )
+    p.add_argument(
+        "--timeline",
+        action="store_true",
+        help="Print compact tracked HUD timeline after processing.",
+    )
+    p.add_argument(
+        "--timeline-limit",
+        type=int,
+        default=40,
+    )
+    p.set_defaults(func=cmd_track_hud)
+
+    p = sub.add_parser(
+        "hud-timeline",
+        help="Print a compact timeline from tracked HUD state JSONL.",
+    )
+    p.add_argument("states")
+    p.add_argument("--limit", type=int)
+    p.set_defaults(func=cmd_hud_timeline)
 
     return parser
 
