@@ -86,6 +86,20 @@ tracking:
 
     suspicious_confirmation_count: 2
 
+
+events:
+  hud:
+    producer_version: hud-event-detector-0.6.0
+    input_states_glob: hud-state-tracker-*.jsonl
+
+    # Event existence may be certain even when the exact transition time lies
+    # somewhere between two observations. Keep that uncertainty in payload and
+    # summary instead of lowering semantic confidence.
+    warn_transition_window_seconds: 20.0
+
+    # First observed value establishes a baseline; it is not itself a change.
+    emit_initial_values: false
+
 storage:
   observations_format: jsonl
   events_format: jsonl

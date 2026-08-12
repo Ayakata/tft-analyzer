@@ -7,6 +7,7 @@ from tft_analyzer.core.models import (
     GameState,
     Observation,
     SemanticAction,
+    TrackedHUDState,
 )
 
 
@@ -22,6 +23,15 @@ class EventDetector(Protocol):
         observations: Iterable[Observation],
     ) -> Iterable[GameEvent]:
         ...
+
+
+class TrackedStateEventDetector(Protocol):
+    def ingest_state(
+        self,
+        state: TrackedHUDState,
+    ) -> Iterable[GameEvent]:
+        ...
+
 
 
 class StateReducer(Protocol):

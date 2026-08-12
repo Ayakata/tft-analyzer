@@ -15,6 +15,11 @@ from tft_analyzer.tracking.hud import (
     track_match_hud,
 )
 from tft_analyzer.tracking.hud.timeline import format_hud_timeline
+from tft_analyzer.events.hud import (
+    HUDEventDetectorSettings,
+    detect_match_hud_events,
+)
+from tft_analyzer.events.hud.timeline import format_hud_event_timeline
 from tft_analyzer.perception.layout import ROIRegistry, build_roi_debug
 from tft_analyzer.perception.ocr import RapidOCREngine
 from tft_analyzer.perception.hud.debug import build_hud_debug
@@ -524,6 +529,105 @@ def cmd_hud_timeline(args):
     return 0
 
 
+
+def _build_hud_event_settings(cfg):
+    event_cfg = cfg.get("events", {}).get("hud", {})
+
+    return HUDEventDetectorSettings(
+        producer_version=str(
+            event_cfg.get(
+                "producer_version",
+                "hud-event-detector-0.6.0",
+            )
+        ),
+        warn_transition_window_seconds=float(
+            event_cfg.get(
+                "warn_transition_window_seconds",
+                20.0,
+            )
+        ),
+        emit_initial_values=bool(
+            event_cfg.get(
+                "emit_initial_values",
+                False,
+            )
+        ),
+    )
+
+
+def cmd_detect_hud_events(args):
+    cfg = load_yaml(Path(args.config))
+    settings = _build_hud_event_settings(cfg)
+
+    match_dir = Path(args.match_dir)
+    event_cfg = cfg.get("events", {}).get("hud", {})
+    pattern = str(
+        event_cfg.get(
+            "input_states_glob",
+            "hud-state-tracker-*.jsonl",
+        )
+    )
+
+    summary = detect_match_hud_events(
+        match_dir,
+        settings,
+        states_path=(
+            Path(args.states)
+            if args.states
+            else None
+        ),
+        states_glob=pattern,
+    )
+
+    print(f"[INFO] Match:      {match_dir}")
+    print(f"[INFO] Detector:   {summary['producer_version']}")
+    print(f"[INFO] States:     {summary['input_states_path']}")
+    print(f"[OK] State count: {summary['input_state_count']}")
+    print(f"[OK] Events:      {summary['event_count']}")
+
+    print("[INFO] Event counts:")
+    for event_type, count in sorted(
+        summary["event_type_counts"].items()
+    ):
+        print(f"  {event_type:<16} {count}")
+
+    print("[INFO] Field timing:")
+    for field in ("stage", "level", "xp", "gold"):
+        stats = summary["field_stats"][field]
+        print(
+            f"  {field:<6} "
+            f"events={stats['event_count']:<4} "
+            f"mean_conf={stats['mean_confidence']:.3f} "
+            f"mean_window={stats['mean_transition_window_s']:.1f}s "
+            f"max_window={stats['max_transition_window_s']:.1f}s "
+            f"warnings={stats['timing_warning_count']}"
+        )
+
+    print(f"[OK] Events JSONL: {summary['events_path']}")
+    print(f"[OK] Summary:      {summary['summary_path']}")
+
+    if args.timeline:
+        print()
+        print(
+            format_hud_event_timeline(
+                summary["events_path"],
+                limit=args.timeline_limit,
+            )
+        )
+
+    return 0
+
+
+def cmd_hud_events(args):
+    print(
+        format_hud_event_timeline(
+            Path(args.events),
+            limit=args.limit,
+        )
+    )
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="tft-analyzer")
     parser.add_argument("--version", action="version", version=__version__)
@@ -644,6 +748,37 @@ def build_parser():
     p.add_argument("states")
     p.add_argument("--limit", type=int)
     p.set_defaults(func=cmd_hud_timeline)
+
+
+    p = sub.add_parser(
+        "detect-hud-events",
+        help="Detect primitive semantic HUD events from tracked HUD states.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument(
+        "--states",
+        help="Explicit tracked HUD JSONL. Default: latest tracker version.",
+    )
+    p.add_argument(
+        "--timeline",
+        action="store_true",
+        help="Print compact primitive event timeline.",
+    )
+    p.add_argument(
+        "--timeline-limit",
+        type=int,
+        default=80,
+    )
+    p.set_defaults(func=cmd_detect_hud_events)
+
+    p = sub.add_parser(
+        "hud-events",
+        help="Print an existing primitive HUD event JSONL as a timeline.",
+    )
+    p.add_argument("events")
+    p.add_argument("--limit", type=int)
+    p.set_defaults(func=cmd_hud_events)
 
     return parser
 

@@ -17,4 +17,5 @@ class GameEvent(SchemaModel):
     confidence: float = Field(ge=0.0, le=1.0)
     evidence_ids: tuple[str, ...] = ()
     observation_ids: tuple[str, ...] = ()
+    source_state_ids: tuple[str, ...] = ()
     producer_version: str

@@ -83,3 +83,17 @@ detector.
 ## Canonical tracked values
 
 As of 0.5.1, temporal tracking stores only semantic game values. Perception metadata remains in source observations and provenance, but is excluded from equality and transition logic.
+
+
+## Primitive event boundary
+
+Stage 2.3 is intentionally causal-neutral. It converts confirmed semantic state
+differences into primitive events without explaining the cause.
+
+For example `gold 50 -> 43` becomes `GOLD_CHANGED(delta=-7)`, not
+`BUY_UNIT`, `REFRESH_SHOP`, or `PURCHASE_XP`. Those explanations require
+additional synchronized evidence and belong to later inference layers.
+
+Event timestamps identify the first observation of the new value; transition
+windows preserve temporal uncertainty between the last old observation and the
+first new observation.

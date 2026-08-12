@@ -12,9 +12,10 @@ Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL
 - Stage 2.1.2: HUD presence + dynamic stage localization - complete
 - Stage 2.1.3: presence confidence semantics cleanup - complete
 - Stage 2.2: temporal fusion / HUD tracking - complete
-- Stage 2.2.1: tracker stabilization - implemented
+- Stage 2.2.1: tracker stabilization - complete
+- Stage 2.3: primitive HUD event detector - implemented
 
-Current version: **0.5.1**
+Current version: **0.6.0**
 
 ## Install/update on Windows
 
@@ -107,3 +108,15 @@ diagnostics.
 ## 0.5.1 tracker stabilization
 
 Tracked HUD values are semantic-only. Freshness defaults are now stage/level 45s and gold/xp 15s.
+
+
+## Primitive HUD events
+
+```powershell
+tft-analyzer detect-hud-events `
+  .\data\matches\<match_id> `
+  --timeline
+```
+
+The detector consumes the latest tracked HUD states and emits versioned
+`ROUND_START`, `LEVEL_CHANGED`, `XP_CHANGED`, and `GOLD_CHANGED` events.
