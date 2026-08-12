@@ -1,0 +1,41 @@
+schema_version: 1
+
+project:
+  data_root: data
+  models_root: models
+  game_data_root: game_data
+
+capture:
+  enabled: false
+  target_fps: 4
+  save_periodic_keyframes: true
+  keyframe_interval_seconds: 10
+  save_on_scene_change: true
+  save_low_confidence_evidence: true
+
+perception:
+  min_confidence: 0.70
+  unknown_below_confidence: true
+
+tracking:
+  min_event_confidence: 0.80
+  temporal_confirmation_frames: 2
+
+storage:
+  observations_format: jsonl
+  events_format: jsonl
+  states_format: parquet
+  decisions_format: parquet
+
+analysis:
+  enabled: true
+
+realtime:
+  enabled: false
+  policy_gate: true
+
+ml:
+  enabled: false
+
+rl:
+  enabled: false
