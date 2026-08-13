@@ -97,3 +97,29 @@ additional synchronized evidence and belong to later inference layers.
 Event timestamps identify the first observation of the new value; transition
 windows preserve temporal uncertainty between the last old observation and the
 first new observation.
+
+
+## Validation is not evidence rewriting
+
+Stage 2.4 introduces `EventValidation` as an independent derived contract.
+Primitive `GameEvent` objects remain immutable.
+
+Validation separates transition trust from target-state trust. This is
+important because a transition can be suspicious due to a weak previous value
+while the new observed target is reliable.
+
+The canonical reducer consumes the validation recommendation and records every
+apply/skip/recovery decision. Suspicious intermediate values therefore remain
+auditable in the primitive event stream without automatically entering
+`GameState`.
+
+
+## Parent-linked canonical state lineage
+
+As of 0.7.1, `GameState` no longer embeds cumulative event/state provenance.
+Each state references its parent and only the events/tracked states directly
+responsible for the current transition.
+
+Field confidence is also independent of semantic transition creation:
+confirmation of an unchanged value updates field metadata while the canonical
+state sequence remains semantic-only.

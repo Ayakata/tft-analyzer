@@ -100,6 +100,39 @@ events:
     # First observed value establishes a baseline; it is not itself a change.
     emit_initial_values: false
 
+
+validation:
+  hud:
+    producer_version: hud-event-validator-0.7.0
+    input_events_glob: hud-event-detector-*.jsonl
+    input_states_glob: hud-state-tracker-*.jsonl
+
+    min_previous_confidence:
+      stage: 0.90
+      level: 0.90
+      xp: 0.85
+      gold: 0.85
+
+    min_target_confidence:
+      stage: 0.90
+      level: 0.90
+      xp: 0.85
+      gold: 0.85
+
+    timing_uncertain_after_seconds: 20.0
+    flag_non_adjacent_stage_transition: true
+
+reducer:
+  hud:
+    producer_version: hud-game-state-reducer-0.7.1
+    input_events_glob: hud-event-detector-*.jsonl
+    input_validations_glob: hud-event-validator-*.jsonl
+    input_states_glob: hud-state-tracker-*.jsonl
+
+    # Initialize a field from its first observed tracked value. Thereafter only
+    # validated primitive events change it.
+    bootstrap_from_tracked_states: true
+
 storage:
   observations_format: jsonl
   events_format: jsonl

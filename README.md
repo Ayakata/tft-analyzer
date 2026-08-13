@@ -13,9 +13,11 @@ Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL
 - Stage 2.1.3: presence confidence semantics cleanup - complete
 - Stage 2.2: temporal fusion / HUD tracking - complete
 - Stage 2.2.1: tracker stabilization - complete
-- Stage 2.3: primitive HUD event detector - implemented
+- Stage 2.3: primitive HUD event detector - complete
+- Stage 2.4: event validation + canonical GameState reducer - complete
+- Stage 2.4.1: canonical state stabilization - implemented
 
-Current version: **0.6.0**
+Current version: **0.7.1**
 
 ## Install/update on Windows
 
@@ -120,3 +122,27 @@ tft-analyzer detect-hud-events `
 
 The detector consumes the latest tracked HUD states and emits versioned
 `ROUND_START`, `LEVEL_CHANGED`, `XP_CHANGED`, and `GOLD_CHANGED` events.
+
+
+## Event validation and canonical state
+
+```powershell
+tft-analyzer validate-hud-events .\data\matches\<match_id> --timeline
+
+tft-analyzer reduce-game-state .\data\matches\<match_id> --timeline
+```
+
+The validator keeps primitive events immutable and attaches derived quality.
+The reducer uses target-side confidence to avoid contaminating canonical state
+with weak OCR values while still allowing recovery to later strong values.
+
+
+## 0.7.1 canonical state stabilization
+
+Canonical states now use parent-linked, direct provenance and field-level
+confidence/freshness. Repeated observations refresh metadata without creating
+new semantic states.
+
+```powershell
+tft-analyzer reduce-game-state .\data\matches\<match_id> --timeline
+```

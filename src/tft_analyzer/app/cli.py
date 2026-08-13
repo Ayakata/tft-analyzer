@@ -20,6 +20,16 @@ from tft_analyzer.events.hud import (
     detect_match_hud_events,
 )
 from tft_analyzer.events.hud.timeline import format_hud_event_timeline
+from tft_analyzer.validation.hud import (
+    HUDEventValidatorSettings,
+    validate_match_hud_events,
+)
+from tft_analyzer.validation.hud.timeline import format_validation_timeline
+from tft_analyzer.reducers.hud import (
+    HUDGameStateReducerSettings,
+    reduce_match_game_state,
+)
+from tft_analyzer.reducers.hud.timeline import format_game_state_timeline
 from tft_analyzer.perception.layout import ROIRegistry, build_roi_debug
 from tft_analyzer.perception.ocr import RapidOCREngine
 from tft_analyzer.perception.hud.debug import build_hud_debug
@@ -628,6 +638,216 @@ def cmd_hud_events(args):
     return 0
 
 
+
+def _build_hud_validator_settings(cfg):
+    val_cfg = cfg.get("validation", {}).get("hud", {})
+
+    prev = val_cfg.get("min_previous_confidence", {})
+    target = val_cfg.get("min_target_confidence", {})
+
+    return HUDEventValidatorSettings(
+        producer_version=str(
+            val_cfg.get(
+                "producer_version",
+                "hud-event-validator-0.7.0",
+            )
+        ),
+        min_previous_confidence={
+            "stage": float(prev.get("stage", 0.90)),
+            "level": float(prev.get("level", 0.90)),
+            "xp": float(prev.get("xp", 0.85)),
+            "gold": float(prev.get("gold", 0.85)),
+        },
+        min_target_confidence={
+            "stage": float(target.get("stage", 0.90)),
+            "level": float(target.get("level", 0.90)),
+            "xp": float(target.get("xp", 0.85)),
+            "gold": float(target.get("gold", 0.85)),
+        },
+        timing_uncertain_after_seconds=float(
+            val_cfg.get(
+                "timing_uncertain_after_seconds",
+                20.0,
+            )
+        ),
+        flag_non_adjacent_stage_transition=bool(
+            val_cfg.get(
+                "flag_non_adjacent_stage_transition",
+                True,
+            )
+        ),
+    )
+
+
+def cmd_validate_hud_events(args):
+    cfg = load_yaml(Path(args.config))
+    settings = _build_hud_validator_settings(cfg)
+
+    match_dir = Path(args.match_dir)
+    val_cfg = cfg.get("validation", {}).get("hud", {})
+
+    summary = validate_match_hud_events(
+        match_dir,
+        settings,
+        events_path=Path(args.events) if args.events else None,
+        states_path=Path(args.states) if args.states else None,
+        events_glob=str(
+            val_cfg.get(
+                "input_events_glob",
+                "hud-event-detector-*.jsonl",
+            )
+        ),
+        states_glob=str(
+            val_cfg.get(
+                "input_states_glob",
+                "hud-state-tracker-*.jsonl",
+            )
+        ),
+    )
+
+    print(f"[INFO] Match:       {match_dir}")
+    print(f"[INFO] Validator:   {summary['validator_version']}")
+    print(f"[INFO] Events:      {summary['input_events_path']}")
+    print(f"[INFO] States:      {summary['input_states_path']}")
+    print(f"[OK] Validations:  {summary['validation_count']}")
+
+    print("[INFO] Quality:")
+    for quality, count in sorted(summary["quality_counts"].items()):
+        print(f"  {quality:<18} {count}")
+
+    print("[INFO] Apply recommendations:")
+    for field in ("stage", "level", "xp", "gold"):
+        counts = summary["field_apply_recommendations"][field]
+        print(
+            f"  {field:<6} "
+            f"apply={counts['apply']:<4} "
+            f"skip={counts['skip']:<4}"
+        )
+
+    print(f"[OK] JSONL:         {summary['validations_path']}")
+    print(f"[OK] Summary:       {summary['summary_path']}")
+
+    if args.timeline:
+        print()
+        print(
+            format_validation_timeline(
+                summary["input_events_path"],
+                summary["validations_path"],
+                limit=args.timeline_limit,
+            )
+        )
+
+    return 0
+
+
+def _build_hud_reducer_settings(cfg):
+    reducer_cfg = cfg.get("reducer", {}).get("hud", {})
+
+    return HUDGameStateReducerSettings(
+        producer_version=str(
+            reducer_cfg.get(
+                "producer_version",
+                "hud-game-state-reducer-0.7.1",
+            )
+        ),
+        bootstrap_from_tracked_states=bool(
+            reducer_cfg.get(
+                "bootstrap_from_tracked_states",
+                True,
+            )
+        ),
+    )
+
+
+def cmd_reduce_game_state(args):
+    cfg = load_yaml(Path(args.config))
+    settings = _build_hud_reducer_settings(cfg)
+
+    match_dir = Path(args.match_dir)
+    reducer_cfg = cfg.get("reducer", {}).get("hud", {})
+
+    summary = reduce_match_game_state(
+        match_dir,
+        settings,
+        events_path=Path(args.events) if args.events else None,
+        validations_path=(
+            Path(args.validations)
+            if args.validations
+            else None
+        ),
+        tracked_states_path=(
+            Path(args.tracked_states)
+            if args.tracked_states
+            else None
+        ),
+        events_glob=str(
+            reducer_cfg.get(
+                "input_events_glob",
+                "hud-event-detector-*.jsonl",
+            )
+        ),
+        validations_glob=str(
+            reducer_cfg.get(
+                "input_validations_glob",
+                "hud-event-validator-*.jsonl",
+            )
+        ),
+        tracked_states_glob=str(
+            reducer_cfg.get(
+                "input_states_glob",
+                "hud-state-tracker-*.jsonl",
+            )
+        ),
+    )
+
+    print(f"[INFO] Match:        {match_dir}")
+    print(f"[INFO] Reducer:      {summary['reducer_version']}")
+    print(f"[INFO] Events:       {summary['input_events_path']}")
+    print(f"[INFO] Validations:  {summary['input_validations_path']}")
+    print(f"[INFO] Tracked:      {summary['input_tracked_states_path']}")
+    print(f"[OK] Canon states:  {summary['canonical_state_count']}")
+    print(f"[OK] Decisions:     {summary['decision_count']}")
+
+    print("[INFO] Reduction actions:")
+    for action, count in sorted(summary["decision_actions"].items()):
+        print(f"  {action:<24} {count}")
+
+    print(
+        "[INFO] Direct provenance: "
+        f"max_events/state={summary['max_direct_event_ids_per_state']} "
+        f"max_sources/state={summary['max_direct_source_state_ids_per_state']}"
+    )
+    print(
+        "[INFO] Metadata refreshes: "
+        f"{summary['metadata_refresh_count']}"
+    )
+
+    print(f"[OK] States JSONL:  {summary['states_path']}")
+    print(f"[OK] Decisions:     {summary['decisions_path']}")
+    print(f"[OK] Summary:       {summary['summary_path']}")
+
+    if args.timeline:
+        print()
+        print(
+            format_game_state_timeline(
+                summary["states_path"],
+                limit=args.timeline_limit,
+            )
+        )
+
+    return 0
+
+
+def cmd_game_states(args):
+    print(
+        format_game_state_timeline(
+            Path(args.states),
+            limit=args.limit,
+        )
+    )
+    return 0
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="tft-analyzer")
     parser.add_argument("--version", action="version", version=__version__)
@@ -779,6 +999,40 @@ def build_parser():
     p.add_argument("events")
     p.add_argument("--limit", type=int)
     p.set_defaults(func=cmd_hud_events)
+
+
+    p = sub.add_parser(
+        "validate-hud-events",
+        help="Validate primitive HUD events using source tracked states.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument("--events")
+    p.add_argument("--states")
+    p.add_argument("--timeline", action="store_true")
+    p.add_argument("--timeline-limit", type=int, default=160)
+    p.set_defaults(func=cmd_validate_hud_events)
+
+    p = sub.add_parser(
+        "reduce-game-state",
+        help="Build canonical GameState sequence from validated HUD events.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument("--events")
+    p.add_argument("--validations")
+    p.add_argument("--tracked-states")
+    p.add_argument("--timeline", action="store_true")
+    p.add_argument("--timeline-limit", type=int, default=160)
+    p.set_defaults(func=cmd_reduce_game_state)
+
+    p = sub.add_parser(
+        "game-states",
+        help="Print a canonical GameState JSONL timeline.",
+    )
+    p.add_argument("states")
+    p.add_argument("--limit", type=int)
+    p.set_defaults(func=cmd_game_states)
 
     return parser
 

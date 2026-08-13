@@ -59,7 +59,9 @@ def test_event_state_and_transition_contract() -> None:
         timestamp_s=11.0,
         player=PlayerState(hp=100, gold=48, level=4, xp=0),
         shop=ShopState(slots=("A", "B", "C", "D", "E")),
-        source_event_ids=(event.event_id,),
+        parent_state_id=None,
+        applied_event_ids=(event.event_id,),
+        source_state_ids=("tracked-state-1",),
         reducer_version="state-reducer-0.1.0",
     )
 

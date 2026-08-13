@@ -87,3 +87,19 @@ class DecisionType(StrEnum):
     UNIT_UPGRADE = "unit_upgrade"
     POSITIONING_CHANGE = "positioning_change"
     OTHER = "other"
+
+
+
+class EventQuality(StrEnum):
+    TRUSTED = "trusted"
+    TIMING_UNCERTAIN = "timing_uncertain"
+    SUSPICIOUS = "suspicious"
+
+
+class ReductionAction(StrEnum):
+    INITIALIZED = "initialized"
+    APPLIED = "applied"
+    APPLIED_WITH_MISMATCH = "applied_with_mismatch"
+    SKIPPED_VALIDATION = "skipped_validation"
+    IGNORED_NO_CHANGE = "ignored_no_change"
+    METADATA_REFRESHED = "metadata_refreshed"

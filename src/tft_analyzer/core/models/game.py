@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import Field
 
 from tft_analyzer.core.enums import GamePhase
@@ -23,6 +25,7 @@ class PlayerState(SchemaModel):
     gold: int | None = Field(default=None, ge=0)
     level: int | None = Field(default=None, ge=1)
     xp: int | None = Field(default=None, ge=0)
+    xp_required: int | None = Field(default=None, ge=1)
 
 
 class ShopState(SchemaModel):
@@ -36,6 +39,24 @@ class OpponentSnapshot(SchemaModel):
     level: int | None = Field(default=None, ge=1)
     board: tuple[UnitInstance, ...] = ()
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class StateFieldMeta(SchemaModel):
+    """
+    Confidence/freshness of the current canonical value for one field.
+
+    This metadata may be refreshed by repeated tracked observations without
+    creating a new semantic GameState.
+    """
+
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    last_observed_at_s: float | None = Field(default=None, ge=0.0)
+    age_s: float | None = Field(default=None, ge=0.0)
+
+    source_observation_id: str | None = None
+    source_evidence_id: str | None = None
+    source_tracked_state_id: str | None = None
 
 
 class GameState(SchemaModel):
@@ -60,6 +81,12 @@ class GameState(SchemaModel):
     active_traits: tuple[str, ...] = ()
     observed_opponents: tuple[OpponentSnapshot, ...] = ()
 
-    source_event_ids: tuple[str, ...] = ()
+    # Bounded lineage: follow parent_state_id to reconstruct full history.
+    parent_state_id: str | None = None
+    applied_event_ids: tuple[str, ...] = ()
+    source_state_ids: tuple[str, ...] = ()
+
+    field_meta: dict[str, StateFieldMeta] = Field(default_factory=dict)
+
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     reducer_version: str

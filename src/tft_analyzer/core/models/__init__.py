@@ -10,17 +10,21 @@ from .game import (
     OpponentSnapshot,
     PlayerState,
     ShopState,
+    StateFieldMeta,
     UnitInstance,
 )
 from .manifest import MatchManifest, PipelineVersions
 from .observations import Observation
 from .transitions import TransitionSample
 from .tracking import TrackedField, TrackedHUDState, TrackingDecision
+from .validation import EventValidation
+from .reduction import StateReductionDecision
 
 __all__ = [
     "BoardPosition",
     "DecisionEpisode",
     "EvidenceRef",
+    "EventValidation",
     "Finding",
     "GameEvent",
     "GameState",
@@ -32,6 +36,8 @@ __all__ = [
     "SchemaModel",
     "SemanticAction",
     "ShopState",
+    "StateFieldMeta",
+    "StateReductionDecision",
     "TrackedField",
     "TrackedHUDState",
     "TrackingDecision",

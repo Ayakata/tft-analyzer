@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from typing import Protocol
 
 from tft_analyzer.core.models import (
+    EventValidation,
     Finding,
     GameEvent,
     GameState,
@@ -30,6 +31,15 @@ class TrackedStateEventDetector(Protocol):
         self,
         state: TrackedHUDState,
     ) -> Iterable[GameEvent]:
+        ...
+
+
+
+class EventValidator(Protocol):
+    def validate(
+        self,
+        event: GameEvent,
+    ) -> EventValidation:
         ...
 
 
