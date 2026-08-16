@@ -13,6 +13,7 @@ from tft_analyzer.core.models import (
     GameEvent,
     GameState,
     PlayerState,
+    ShopState,
     StateFieldMeta,
     StateReductionDecision,
     TrackedField,
@@ -22,7 +23,7 @@ from tft_analyzer.core.models import (
 
 @dataclass(frozen=True, slots=True)
 class HUDGameStateReducerSettings:
-    producer_version: str = "hud-game-state-reducer-0.7.1"
+    producer_version: str = "hud-game-state-reducer-0.10.0"
     bootstrap_from_tracked_states: bool = True
 
 
@@ -52,6 +53,8 @@ class HUDGameStateReducer:
         self.level: int | None = None
         self.xp: int | None = None
         self.xp_required: int | None = None
+        self.hp: int | None = None
+        self.shop_slots: tuple[str | None, ...] | None = None
 
         self.field_meta: dict[str, StateFieldMeta] = {}
 
@@ -86,6 +89,14 @@ class HUDGameStateReducer:
                 return None
             return {"stage": self.stage, "round": self.round}
 
+        if field == "hp":
+            return None if self.hp is None else {"hp": self.hp}
+
+        if field == "shop":
+            if self.shop_slots is None:
+                return None
+            return {"slots": list(self.shop_slots)}
+
         if field == "gold":
             return None if self.gold is None else {"gold": self.gold}
 
@@ -110,6 +121,12 @@ class HUDGameStateReducer:
         if field == "stage":
             self.stage = int(value["stage"])
             self.round = int(value["round"])
+
+        elif field == "hp":
+            self.hp = int(value["hp"])
+
+        elif field == "shop":
+            self.shop_slots = tuple(value["slots"])
 
         elif field == "gold":
             self.gold = int(value["gold"])
@@ -192,7 +209,7 @@ class HUDGameStateReducer:
 
         decisions: list[StateReductionDecision] = []
 
-        for field in ("stage", "level", "xp", "gold"):
+        for field in ("stage", "level", "xp", "gold", "hp", "shop"):
             if self._field_value(field) is not None:
                 continue
 
@@ -381,7 +398,7 @@ class HUDGameStateReducer:
         """
         decisions: list[StateReductionDecision] = []
 
-        for field in ("stage", "level", "xp", "gold"):
+        for field in ("stage", "level", "xp", "gold", "hp", "shop"):
             canonical = self._field_value(field)
             if canonical is None:
                 continue
@@ -466,7 +483,7 @@ class HUDGameStateReducer:
 
         known_confidences = [
             field_meta[field].confidence
-            for field in ("stage", "level", "xp", "gold")
+            for field in ("stage", "level", "xp", "gold", "hp", "shop")
             if self._field_value(field) is not None
             and field in field_meta
         ]
@@ -489,6 +506,15 @@ class HUDGameStateReducer:
                 level=self.level,
                 xp=self.xp,
                 xp_required=self.xp_required,
+                hp=self.hp,
+            ),
+            shop=ShopState(
+                slots=(
+                    self.shop_slots
+                    if self.shop_slots is not None
+                    else ()
+                ),
+                locked=None,
             ),
             parent_state_id=parent_state_id,
             applied_event_ids=tuple(applied_event_ids),

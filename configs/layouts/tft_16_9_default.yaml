@@ -1,5 +1,5 @@
 schema_version: 1
-profile_id: tft_16_9_default_v4
+profile_id: tft_16_9_default_v6
 description: >-
   Initial TFT 16:9 HUD layout calibrated from a real 1920x1080 match capture.
   Coordinates are normalized and resolution-independent, but this profile still
@@ -11,8 +11,8 @@ reference_height: 1080
 ui_scale_hint: default
 metadata:
   calibrated_on: 1920x1080
-  calibration_status: validated_static_rois_with_stage_search_region
-  notes: Static HUD/shop ROIs validated on real frames. Stage 2.1.2 adds stage search/localization because early 1-x rounds render farther right. Player HP remains dynamic.
+  calibration_status: validated_static_rois_plus_initial_board_bench_geometry
+  notes: Static HUD/shop ROIs validated on real frames. Stage 2.1.2 adds stage search/localization because early 1-x rounds render farther right. Player HP is resolved dynamically inside players_panel. Stage 3.3 adds initial board/bench search regions; their cell geometry requires real-frame acceptance.
 
 rois:
   stage_value:
@@ -106,6 +106,22 @@ rois:
     purpose: >-
       Dynamic player-list search area. Future PlayerListRecognizer locates the
       local player's row inside this panel, then extracts HP relative to that row.
+
+  board_region:
+    x: 0.20500000
+    y: 0.28000000
+    w: 0.59000000
+    h: 0.45000000
+    group: board
+    purpose: Broad local-player board search/debug region. Cell centers are calibrated separately as a perspective lattice.
+
+  bench_region:
+    x: 0.24500000
+    y: 0.73500000
+    w: 0.51000000
+    h: 0.10500000
+    group: bench
+    purpose: Local-player nine-slot bench search/debug region above the shop.
 
   shop_region:
     x: 0.24843750

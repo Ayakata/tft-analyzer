@@ -198,6 +198,8 @@ def reduce_match_game_state(
                 state.player.xp,
                 state.player.xp_required,
                 state.player.gold,
+                state.player.hp,
+                tuple(state.shop.slots),
             )
 
             if signature != emitted_signature:
@@ -246,7 +248,7 @@ def reduce_match_game_state(
     action_counts: dict[str, int] = defaultdict(int)
     field_actions = {
         field: defaultdict(int)
-        for field in ("stage", "level", "xp", "gold")
+        for field in ("stage", "level", "xp", "gold", "hp", "shop")
     }
 
     for decision in decisions:

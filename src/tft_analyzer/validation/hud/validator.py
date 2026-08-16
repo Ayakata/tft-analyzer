@@ -14,7 +14,7 @@ from tft_analyzer.core.models import (
 
 @dataclass(frozen=True, slots=True)
 class HUDEventValidatorSettings:
-    producer_version: str = "hud-event-validator-0.7.0"
+    producer_version: str = "hud-event-validator-0.10.0"
 
     min_previous_confidence: dict[str, float] = field(
         default_factory=lambda: {
@@ -22,6 +22,8 @@ class HUDEventValidatorSettings:
             "level": 0.90,
             "xp": 0.85,
             "gold": 0.85,
+            "hp": 0.85,
+            "shop": 0.80,
         }
     )
     min_target_confidence: dict[str, float] = field(
@@ -30,6 +32,8 @@ class HUDEventValidatorSettings:
             "level": 0.90,
             "xp": 0.85,
             "gold": 0.85,
+            "hp": 0.85,
+            "shop": 0.80,
         }
     )
 
@@ -174,7 +178,28 @@ class HUDEventValidator:
         else:
             target_semantically_valid = True
 
-            if field == "gold":
+            if field == "shop":
+                slots = target.get("slots")
+                if (
+                    not isinstance(slots, (list, tuple))
+                    or len(slots) != 5
+                    or any(
+                        value is not None
+                        and (
+                            not isinstance(value, str)
+                            or not value.strip()
+                        )
+                        for value in slots
+                    )
+                ):
+                    target_semantically_valid = False
+
+            elif field == "hp":
+                hp = int(target.get("hp", -1))
+                if hp < 0 or hp > 250:
+                    target_semantically_valid = False
+
+            elif field == "gold":
                 gold = int(target.get("gold", -1))
                 if gold < 0:
                     target_semantically_valid = False

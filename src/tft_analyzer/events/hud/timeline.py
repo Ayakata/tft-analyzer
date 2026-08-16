@@ -33,12 +33,32 @@ def _change_text(event: GameEvent) -> str:
             return f"-> {xp(after)}"
         return f"{xp(before)} -> {xp(after)}"
 
+    if event.event_type == EventType.HP_CHANGED:
+        if before is None:
+            return f"-> {after['hp']}"
+        delta = payload.get("delta")
+        delta_text = f" ({delta:+d})" if isinstance(delta, int) else ""
+        return f"{before['hp']} -> {after['hp']}{delta_text}"
+
     if event.event_type == EventType.GOLD_CHANGED:
         if before is None:
             return f"-> {after['gold']}"
         delta = payload.get("delta")
         delta_text = f" ({delta:+d})" if isinstance(delta, int) else ""
         return f"{before['gold']} -> {after['gold']}{delta_text}"
+
+    if event.event_type == EventType.SHOP_CHANGED:
+        changes = payload.get("slot_changes", [])
+        if not changes:
+            return "shop changed"
+        parts = []
+        for change in changes:
+            before_name = change.get("from") or "-"
+            after_name = change.get("to") or "-"
+            parts.append(
+                f"{change.get('index')}:{before_name}->{after_name}"
+            )
+        return ", ".join(parts)
 
     return f"{before!r} -> {after!r}"
 
@@ -49,8 +69,8 @@ def format_hud_event_timeline(
     limit: int | None = None,
 ) -> str:
     lines = [
-        " time(s)   event            change                         conf  window",
-        "-----------------------------------------------------------------------",
+        " time(s)   event            change                                                   conf  window",
+        "---------------------------------------------------------------------------------------------------",
     ]
 
     count = 0
@@ -65,7 +85,7 @@ def format_hud_event_timeline(
         lines.append(
             f"{event.timestamp_s:8.1f}  "
             f"{event.event_type.value:<16} "
-            f"{_change_text(event):<30} "
+            f"{_change_text(event):<56} "
             f"{event.confidence:5.3f}  "
             f"{width_s:5.1f}s{warning}"
         )

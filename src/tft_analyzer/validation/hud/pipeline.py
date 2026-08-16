@@ -109,11 +109,11 @@ def validate_match_hud_events(
     reason_counts: dict[str, int] = defaultdict(int)
     field_quality = {
         field: defaultdict(int)
-        for field in ("stage", "level", "xp", "gold")
+        for field in ("stage", "level", "xp", "gold", "hp", "shop")
     }
     field_apply = {
         field: {"apply": 0, "skip": 0}
-        for field in ("stage", "level", "xp", "gold")
+        for field in ("stage", "level", "xp", "gold", "hp", "shop")
     }
 
     for validation in validations:

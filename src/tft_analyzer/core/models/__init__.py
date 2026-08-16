@@ -1,7 +1,13 @@
 from .actions import SemanticAction
 from .analysis import Finding
 from .base import SchemaModel
-from .decisions import DecisionEpisode
+from .decisions import (
+    DecisionActionGroup,
+    DecisionBoundaryState,
+    DecisionEconomySummary,
+    DecisionEpisode,
+    DecisionSamplingSummary,
+)
 from .evidence import EvidenceRef
 from .events import GameEvent
 from .game import (
@@ -22,7 +28,11 @@ from .reduction import StateReductionDecision
 
 __all__ = [
     "BoardPosition",
+    "DecisionActionGroup",
+    "DecisionBoundaryState",
+    "DecisionEconomySummary",
     "DecisionEpisode",
+    "DecisionSamplingSummary",
     "EvidenceRef",
     "EventValidation",
     "Finding",

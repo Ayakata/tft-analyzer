@@ -92,3 +92,27 @@ def test_manifest_roundtrip() -> None:
     )
     restored = MatchManifest.model_validate_json(manifest.model_dump_json())
     assert restored == manifest
+
+
+
+def test_action_type_contains_observed_zone_transfers() -> None:
+    assert ActionType.BENCH_TO_BOARD.value == "bench_to_board"
+    assert ActionType.BOARD_TO_BENCH.value == "board_to_bench"
+    assert ActionType.UNKNOWN_ECON_ACTION.value == "unknown_econ_action"
+
+
+
+def test_finding_accepts_reconstruction_uncertainty_interpretation():
+    from tft_analyzer.core.models.analysis import Finding
+
+    item = Finding(
+        finding_id="f-uncertainty",
+        match_id="m",
+        decision_id="d",
+        finding_code="unresolved_economy_spend",
+        producer_version="economy-tempo-analyzer-0.16.1",
+        category="reconstruction_uncertainty.economy",
+        title="Observed spend is only partially reconstructed",
+        interpretation="reconstruction_uncertainty",
+    )
+    assert item.interpretation == "reconstruction_uncertainty"

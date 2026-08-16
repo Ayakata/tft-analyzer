@@ -52,3 +52,33 @@ def find_latest_observation_file(
         )
 
     return max(candidates, key=_version_key)
+
+
+
+def find_latest_observation_files(
+    match_dir: Path | str,
+    *,
+    patterns: list[str] | tuple[str, ...],
+) -> list[Path]:
+    """
+    Select the latest semantic version for each independent observation stream.
+
+    Example:
+      hud-rapidocr-*.jsonl
+      players-rapidocr-*.jsonl
+
+    A missing optional stream is skipped; callers can require at least one
+    resolved input.
+    """
+    resolved = []
+    for pattern in patterns:
+        try:
+            path = find_latest_observation_file(
+                match_dir,
+                pattern=pattern,
+            )
+        except FileNotFoundError:
+            continue
+        if path not in resolved:
+            resolved.append(path)
+    return resolved

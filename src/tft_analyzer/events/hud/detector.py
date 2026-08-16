@@ -17,18 +17,20 @@ from .types import EventBaseline
 
 @dataclass(frozen=True, slots=True)
 class HUDEventDetectorSettings:
-    producer_version: str = "hud-event-detector-0.6.0"
+    producer_version: str = "hud-event-detector-0.10.0"
     warn_transition_window_seconds: float = 20.0
     emit_initial_values: bool = False
 
 
-_FIELD_ORDER = ("stage", "level", "xp", "gold")
+_FIELD_ORDER = ("stage", "level", "xp", "gold", "hp", "shop")
 
 _EVENT_TYPE = {
     "stage": EventType.ROUND_START,
     "level": EventType.LEVEL_CHANGED,
     "xp": EventType.XP_CHANGED,
     "gold": EventType.GOLD_CHANGED,
+    "hp": EventType.HP_CHANGED,
+    "shop": EventType.SHOP_CHANGED,
 }
 
 
@@ -132,7 +134,40 @@ class HUDEventDetector:
             ),
         }
 
-        if field_name == "gold":
+        if field_name == "shop":
+            before_slots = list(previous.value.get("slots", []))
+            after_slots = list(current_value.get("slots", []))
+            changed_slots = [
+                index
+                for index, (before, after) in enumerate(
+                    zip(before_slots, after_slots)
+                )
+                if before != after
+            ]
+            payload["changed_slots"] = changed_slots
+            payload["slot_change_count"] = len(changed_slots)
+            payload["slot_changes"] = [
+                {
+                    "index": index,
+                    "from": before_slots[index],
+                    "to": after_slots[index],
+                }
+                for index in changed_slots
+            ]
+            payload["occupied_before"] = sum(
+                value is not None for value in before_slots
+            )
+            payload["occupied_after"] = sum(
+                value is not None for value in after_slots
+            )
+
+        elif field_name == "hp":
+            payload["delta"] = (
+                int(current_value["hp"])
+                - int(previous.value["hp"])
+            )
+
+        elif field_name == "gold":
             payload["delta"] = (
                 int(current_value["gold"])
                 - int(previous.value["gold"])

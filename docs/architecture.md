@@ -123,3 +123,56 @@ responsible for the current transition.
 Field confidence is also independent of semantic transition creation:
 confirmation of an unchanged value updates field metadata while the canonical
 state sequence remains semantic-only.
+
+
+## Independent perception streams
+
+Stage 3.0 formalizes that one match may have multiple versioned Observation
+producers. Fixed HUD OCR and dynamic player-list perception are rebuilt
+independently and merged only at temporal tracking.
+
+This avoids coupling mature OCR components to experimental CV modules.
+
+Player HP is the first field to use the full vertical extension pattern:
+
+`pixels -> Observation -> TrackedHUDState -> GameEvent -> EventValidation ->
+GameState`.
+
+
+## Player HP stabilization boundary
+
+Stage 3.0.1 keeps row identity, HP OCR geometry and temporal plausibility as separate responsibilities. The perception producer prefers calibrated HP geometry and emits raw confidence/provenance; the tracker then handles stateful confirmation rules such as large jumps and possible healing. No downstream event or GameState contract is changed by this patch.
+\n\n## Shop perception boundary\n\nShop snapshot perception is introduced as an independent producer before it is\nallowed to affect canonical state. The first version records slot occupancy,\nOCR name tokens and portrait hashes. Temporal shop tracking and causal action\ninference are intentionally deferred until the raw snapshot stream is validated\non a complete match.\n
+
+## Shop identity resolution
+
+Shop OCR text is evidence, not identity. Stage 3.1.1 introduces an explicit
+resolver boundary: OCR token -> lexicon candidate -> optional match-wide exact
+portrait-hash consensus -> resolved semantic shop identity. Downstream shop
+tracking must consume only resolved identities.
+
+
+## Shop enters the canonical state pipeline (0.10.0)
+
+The common tracked timeline now merges three independent perception streams:
+
+```text
+fixed HUD OCR
+player HP
+shop snapshots
+      ↓
+TrackedHUDState
+```
+
+Shop changes are represented as primitive `SHOP_CHANGED` facts. The event layer
+does not infer why a slot changed. This preserves the existing architectural
+boundary between perception/state reconstruction and later decision analysis.
+
+
+## Sparse decision-episode boundary (Stage 4.1)
+
+`DecisionEpisode` is an evidence-bounded trajectory segment, not a recovered
+click sequence. With sparse screenshots, actions inferred from one transition
+window are unordered. Only ordering between non-overlapping source windows is
+retained (`window_partial_order`). Strategic labels such as `ROLLDOWN` are not
+assigned by the episode builder unless later analyzers can justify them.

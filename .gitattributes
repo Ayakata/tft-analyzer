@@ -1,0 +1,10 @@
+# Keep repository text files stable across Windows and Unix checkouts.
+* text=auto eol=lf
+
+# Binary assets must never undergo line-ending conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary

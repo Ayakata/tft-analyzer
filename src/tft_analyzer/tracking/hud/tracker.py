@@ -15,7 +15,9 @@ from tft_analyzer.core.models import (
 from .constraints import (
     ConstraintResult,
     check_gold,
+    check_hp,
     check_level,
+    check_shop,
     check_stage,
     check_xp,
 )
@@ -28,12 +30,14 @@ FIELD_BY_KIND = {
     ObservationKind.GOLD: "gold",
     ObservationKind.LEVEL: "level",
     ObservationKind.XP: "xp",
+    ObservationKind.HP: "hp",
+    ObservationKind.SHOP: "shop",
 }
 
 
 @dataclass(frozen=True, slots=True)
 class HUDTrackerSettings:
-    producer_version: str = "hud-state-tracker-0.5.1"
+    producer_version: str = "hud-state-tracker-0.10.0"
 
     max_age_seconds: dict[str, float] = field(
         default_factory=lambda: {
@@ -41,6 +45,8 @@ class HUDTrackerSettings:
             "gold": 15.0,
             "level": 45.0,
             "xp": 15.0,
+            "hp": 60.0,
+            "shop": 45.0,
         }
     )
 
@@ -53,6 +59,9 @@ class HUDTrackerSettings:
     reject_xp_regression_same_requirement: bool = True
 
     suspicious_confirmation_count: int = 2
+    hp_max_jump_without_confirmation: int = 25
+    hp_single_digit_min_confidence: float = 0.90
+    shop_change_min_confidence: float = 0.80
 
 
 class HUDStateTracker:
@@ -101,6 +110,16 @@ class HUDStateTracker:
                     self.settings.max_level_jump_without_confirmation
                 ),
             )
+        if field == "hp":
+            return check_hp(
+                previous,
+                observed,
+                max_jump_without_confirmation=(
+                    self.settings.hp_max_jump_without_confirmation
+                ),
+            )
+        if field == "shop":
+            return check_shop(previous, observed)
         if field == "xp":
             return check_xp(
                 previous,
@@ -186,11 +205,42 @@ class HUDStateTracker:
             else None
         )
 
-        constraint = self._check_constraint(
-            field,
-            previous_value,
-            observed_value,
+        hp_low_conf_single_digit = (
+            field == "hp"
+            and previous_value is not None
+            and int(previous_value["hp"]) >= 10
+            and int(observed_value["hp"]) < 10
+            and float(observation.confidence)
+            < self.settings.hp_single_digit_min_confidence
         )
+
+        if hp_low_conf_single_digit:
+            constraint = ConstraintResult(
+                False,
+                False,
+                "hp_single_digit_low_confidence",
+            )
+        else:
+            constraint = self._check_constraint(
+                field,
+                previous_value,
+                observed_value,
+            )
+
+        shop_low_confidence_change = (
+            field == "shop"
+            and constraint.valid
+            and previous_value is not None
+            and previous_value != observed_value
+            and float(observation.confidence)
+            < self.settings.shop_change_min_confidence
+        )
+        if shop_low_confidence_change:
+            constraint = ConstraintResult(
+                True,
+                True,
+                "shop_low_confidence_change",
+            )
 
         if not constraint.valid:
             self.pending.pop(field, None)
@@ -302,5 +352,7 @@ class HUDStateTracker:
             gold=self._tracked_field("gold", timestamp_s),
             level=self._tracked_field("level", timestamp_s),
             xp=self._tracked_field("xp", timestamp_s),
+            hp=self._tracked_field("hp", timestamp_s),
+            shop=self._tracked_field("shop", timestamp_s),
             tracker_version=self.settings.producer_version,
         )

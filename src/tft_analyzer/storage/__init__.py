@@ -13,6 +13,7 @@ from .validation_reader import (
 from .game_state_reader import iter_game_states
 from .observation_reader import (
     find_latest_observation_file,
+    find_latest_observation_files,
     iter_observations,
 )
 
@@ -22,6 +23,7 @@ __all__ = [
     "StoredEvidence",
     "iter_evidence_records",
     "find_latest_observation_file",
+    "find_latest_observation_files",
     "find_latest_tracked_hud_file",
     "iter_game_events",
     "find_latest_validation_file",

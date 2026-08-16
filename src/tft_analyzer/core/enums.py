@@ -66,6 +66,9 @@ class ActionType(StrEnum):
     PURCHASE_XP = "purchase_xp"
     EQUIP_ITEM = "equip_item"
     MOVE_UNIT = "move_unit"
+    BENCH_TO_BOARD = "bench_to_board"
+    BOARD_TO_BENCH = "board_to_bench"
+    UNKNOWN_ECON_ACTION = "unknown_econ_action"
     CHOOSE_AUGMENT = "choose_augment"
 
     HOLD_ECONOMY = "hold_economy"

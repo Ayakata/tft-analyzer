@@ -36,6 +36,8 @@ class TrackedHUDState(SchemaModel):
     gold: TrackedField = TrackedField()
     level: TrackedField = TrackedField()
     xp: TrackedField = TrackedField()
+    hp: TrackedField = TrackedField()
+    shop: TrackedField = TrackedField()
 
     tracker_version: str
 
@@ -45,7 +47,7 @@ class TrackingDecision(SchemaModel):
     match_id: str
     timestamp_s: float = Field(ge=0.0)
 
-    field: Literal["stage", "gold", "level", "xp"]
+    field: Literal["stage", "gold", "level", "xp", "hp", "shop"]
     observation_id: str
 
     action: Literal[

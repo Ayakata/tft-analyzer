@@ -1,30 +1,33 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from tft_analyzer.core.models import TrackedHUDState
+from tft_analyzer.storage import iter_tracked_hud_states
 
 
-def iter_tracked_states(path: Path | str):
-    path = Path(path)
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                yield TrackedHUDState.model_validate(json.loads(line))
-
-
-def _fmt(field, formatter):
-    if field.value is None:
-        if field.status == "stale":
-            return "<stale>"
+def _format_field(field, formatter):
+    if field.status == "unknown":
         return "?"
+    if field.status == "stale":
+        return "<stale>"
 
     text = formatter(field.value)
-
     if field.status == "carried":
-        return f"{text}~"
+        text += "~"
     return text
+
+
+def _compact_shop(value) -> str:
+    slots = list((value or {}).get("slots", []))
+    if not slots:
+        return "?"
+    parts = []
+    for name in slots:
+        if name is None:
+            parts.append("-")
+        else:
+            parts.append(str(name)[:4])
+    return "[" + "/".join(parts) + "]"
 
 
 def format_hud_timeline(
@@ -33,41 +36,52 @@ def format_hud_timeline(
     limit: int | None = None,
 ) -> str:
     lines = [
-        " time(s)   stage    level      xp     gold",
-        "------------------------------------------",
+        " time(s)   stage    level      xp     gold    hp  shop",
+        "--------------------------------------------------------------------------",
     ]
 
     count = 0
-    for state in iter_tracked_states(states_path):
+    for state in iter_tracked_hud_states(states_path):
         if limit is not None and count >= limit:
             break
 
-        stage = _fmt(
+        stage = _format_field(
             state.stage,
             lambda v: f"{v['stage']}-{v['round']}",
         )
-        level = _fmt(
+        level = _format_field(
             state.level,
             lambda v: f"L{v['level']}",
         )
-        xp = _fmt(
+        xp = _format_field(
             state.xp,
             lambda v: f"{v['current']}/{v['required']}",
         )
-        gold = _fmt(
+        gold = _format_field(
             state.gold,
             lambda v: str(v["gold"]),
         )
+        hp = _format_field(
+            state.hp,
+            lambda v: str(v["hp"]),
+        )
+        shop = _format_field(
+            state.shop,
+            _compact_shop,
+        )
 
         lines.append(
-            f"{state.timestamp_s:8.1f}  "
-            f"{stage:>7}  "
-            f"{level:>7}  "
-            f"{xp:>7}  "
-            f"{gold:>7}"
+            f"{state.timestamp_s:8.1f} "
+            f"{stage:>8} "
+            f"{level:>8} "
+            f"{xp:>8} "
+            f"{gold:>8} "
+            f"{hp:>6}  "
+            f"{shop}"
         )
         count += 1
 
     lines.append("")
     lines.append("~ = carried from a recent observation")
+    lines.append("shop uses four-character identity prefixes; '-' = empty slot")
     return "\n".join(lines)

@@ -10,14 +10,23 @@ def _meta_conf(state, field):
     return f"{meta.confidence:.3f}" if meta is not None else "?"
 
 
+def _compact_shop(slots) -> str:
+    if not slots:
+        return "?"
+    return "[" + "/".join(
+        "-" if value is None else str(value)[:4]
+        for value in slots
+    ) + "]"
+
+
 def format_game_state_timeline(
     states_path: Path | str,
     *,
     limit: int | None = None,
 ) -> str:
     lines = [
-        " time(s)   stage level      xp  gold  conf   field_conf(s/l/x/g)",
-        "------------------------------------------------------------------",
+        " time(s)   stage level      xp  gold   hp  conf   field_conf(s/l/x/g/h/sh)  shop",
+        "------------------------------------------------------------------------------------------------",
     ]
 
     count = 0
@@ -48,10 +57,15 @@ def format_game_state_timeline(
             if state.player.gold is not None
             else "?"
         )
+        hp = (
+            str(state.player.hp)
+            if state.player.hp is not None
+            else "?"
+        )
 
         field_conf = "/".join(
             _meta_conf(state, field)
-            for field in ("stage", "level", "xp", "gold")
+            for field in ("stage", "level", "xp", "gold", "hp", "shop")
         )
 
         lines.append(
@@ -60,9 +74,13 @@ def format_game_state_timeline(
             f"{level:>5} "
             f"{xp:>7} "
             f"{gold:>5} "
+            f"{hp:>4} "
             f"{state.confidence:5.3f}   "
-            f"{field_conf}"
+            f"{field_conf:<31} "
+            f"{_compact_shop(state.shop.slots)}"
         )
         count += 1
 
+    lines.append("")
+    lines.append("shop uses four-character identity prefixes; '-' = empty slot")
     return "\n".join(lines)

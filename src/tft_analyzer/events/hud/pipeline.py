@@ -87,7 +87,7 @@ def detect_match_hud_events(
             timing_warning_counts[field] += 1
 
     field_stats = {}
-    for field in ("stage", "level", "xp", "gold"):
+    for field in ("stage", "level", "xp", "gold", "hp", "shop"):
         count = field_counts[field]
         field_stats[field] = {
             "event_count": count,

@@ -18,4 +18,15 @@ def canonical_hud_value(
         return {"level": int(value["level"])}
     if kind == ObservationKind.XP:
         return {"current": int(value["current"]), "required": int(value["required"])}
+    if kind == ObservationKind.HP:
+        return {"hp": int(value["hp"])}
+    if kind == ObservationKind.SHOP:
+        raw_slots = value.get("slots", [])
+        slots = []
+        for slot in raw_slots:
+            if bool(slot.get("occupied", False)):
+                slots.append(slot.get("resolved_name"))
+            else:
+                slots.append(None)
+        return {"slots": slots}
     raise ValueError(f"Unsupported HUD observation kind: {kind}")

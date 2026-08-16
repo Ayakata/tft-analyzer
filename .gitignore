@@ -84,6 +84,8 @@ temp/
 data/matches/**
 data/datasets/**
 data/cache/**
+data/*_debug/**
+data/game_data/**
 data/roi_debug/**
 data/hud_debug/**
 data/debug/**
@@ -147,3 +149,5 @@ models/**
 # Small curated fixtures such as tests/golden_frames/*.png are intended
 # to remain commit-able, while raw match screenshots are already excluded
 # by data/matches/** and data/roi_debug/** above.
+# Generated Riot Data Dragon cache
+game_data/riot_ddragon/

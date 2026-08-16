@@ -54,15 +54,191 @@ perception:
       x_offsets_px_at_1920: [-20, -10, 0, 10, 20, 30]
       y_offset_px_at_1080: 0
     write_failed_attempts: true
+
+  players:
+    enabled: true
+    engine: rapidocr
+    producer_version: players-rapidocr-0.8.1
+
+    # Optional stable Riot ID/game name. When absent, self-row selection uses
+    # the visual row-highlight heuristic. Can also be overridden on CLI.
+    player_name: null
+
+    min_observation_confidence: 0.55
+    row_count: 8
+    min_panel_score: 0.22
+
+    min_name_match_score: 0.60
+    min_highlight_score: 0.24
+    min_highlight_margin: 0.035
+    min_combined_self_score: 0.40
+    min_combined_self_margin: 0.025
+
+    hp_max_value: 250
+    hp_primary_upscale: 4
+    hp_fallback_upscale: 6
+    hp_binary_threshold: 150
+    hp_primary_candidate_min_confidence: 0.60
+    hp_fallback_min_confidence: 0.72
+    hp_candidate_priors: [1.00, 0.70, 0.45, 0.30, 0.20]
+
+    hp_candidate_x_starts: [0.48, 0.56, 0.64, 0.72, 0.80]
+    hp_candidate_width_ratio: 0.18
+    hp_y0: 0.14
+    hp_y1: 0.86
+
+  board_bench:
+    enabled: true
+    board_producer_version: board-occupancy-0.12.0
+    bench_producer_version: bench-occupancy-0.12.0
+
+    board_rows: 4
+    board_cols: 7
+    bench_slots: 9
+
+    # Presence only says the broad playfield region looks like rendered game UI.
+    min_board_presence_score: 0.20
+    min_bench_presence_score: 0.16
+
+    # Three-way occupancy. Do not force ambiguous cells into occupied/empty.
+    board_empty_below: 0.38
+    board_occupied_above: 0.58
+    bench_empty_below: 0.34
+    bench_occupied_above: 0.54
+
+    # Native TFT cyan placement grid. Rows alternate horizontal offset and
+    # widen toward the camera. Values are normalized centers of c0/c6.
+    board_row_left:
+      - [0.293, 0.414]
+      - [0.319, 0.478]
+      - [0.278, 0.549]
+      - [0.304, 0.625]
+    board_row_right:
+      - [0.651, 0.414]
+      - [0.688, 0.478]
+      - [0.663, 0.549]
+      - [0.701, 0.625]
+
+    bench_left: [0.230, 0.745]
+    bench_right: [0.715, 0.745]
+
+    # Scalar values are compatibility fallbacks for older/custom configs.
+    board_half_width_px_at_1920: 58
+    board_up_px_at_1080: 72
+    board_down_px_at_1080: 30
+
+    # Real-frame calibration: keep lattice centres, scale sampling windows with
+    # perspective instead of using the same rectangle for all four rows.
+    board_half_width_px_at_1920_by_row: [50, 56, 62, 68]
+    board_up_px_at_1080_by_row: [68, 72, 78, 84]
+    board_down_px_at_1080_by_row: [26, 28, 30, 32]
+
+    # Native hex footprint for slot semantics/debug. Context crops above remain
+    # rectangular and taller so differently sized champions may leave the cell.
+    board_hex_half_width_px_at_1920_by_row: [52, 55, 58, 61]
+    board_hex_half_height_px_at_1080_by_row: [38, 41, 45, 48]
+
+    # Bench anchor is calibrated to the actual planning-phase slot platform.
+    # Y=0.745 keeps the footprint on the bench tiles rather than the lower
+    # decorative foliage. Geometry below remains split into context/footprint.
+    # Bench is calibrated separately from board cells:
+    # - footprint = logical slot/base area
+    # - context   = taller crop used for occupancy features and future identity.
+    bench_half_width_px_at_1920: 60
+    bench_up_px_at_1080: 142
+    bench_down_px_at_1080: 12
+    bench_footprint_half_width_px_at_1920: 36
+    bench_footprint_up_px_at_1080: 64
+    bench_footprint_down_px_at_1080: 16
+
+  shop:
+    enabled: true
+    engine: rapidocr
+    producer_version: shop-rapidocr-0.9.1
+
+    min_shop_presence_score: 0.25
+    min_occupied_score: 0.30
+    min_name_confidence: 0.55
+    min_identity_confidence: 0.55
+    min_observation_confidence: 0.55
+
+    identity_lexicon_path: game_data/shop_identity_lexicon_v1.txt
+    identity_min_fuzzy_similarity: 0.82
+    identity_min_fuzzy_margin: 0.06
+    hash_consensus_min_support: 2
+    hash_consensus_min_ratio: 0.75
+    hash_consensus_min_seed_confidence: 0.70
+    hash_consensus_min_identity_confidence: 0.72
+
+    # Relative crop inside each shop card. Calibrated from 1920x1080 UI.
+    name_x0: 0.03
+    name_x1: 0.72
+    name_y0: 0.70
+    name_y1: 0.91
+
+    name_primary_upscale: 3
+    name_fallback_upscale: 4
+    name_binary_threshold: 150
+    portrait_hash_size: 8
+
   layout_profile: configs/layouts/tft_16_9_default.yaml
 
 tracking:
+  board_occupancy:
+    # Match-local background uses the low-score tail separately for each of
+    # 28 board cells and 9 bench slots.
+    background_quantile: 0.22
+    background_min_candidates: 12
+
+    # Thresholds apply to the *background-relative foreground score*.
+    foreground_empty_below: 0.34
+    foreground_occupied_above: 0.58
+
+    # Both initialization and semantic state changes require repeated evidence.
+    confirmation_count: 2
+
+    # Board formation usability is evaluated on every evidence frame using
+    # cross-frame motion against the previous footprint measurement. The
+    # evidence cadence is sparse (~10s), so no additional consecutive-frame
+    # gate is required by default. Bench remains independently tracked.
+    board_stable_frames_required: 1
+    board_max_motion_cells: 10
+    board_max_candidate_changes: 8
+    board_max_uncertain_cells: 12
+    board_motion_delta: 0.18
+    board_min_known_candidates: 16
+
+    # 0.13.1 board semantic gate. When tracked HUD states are available,
+    # canonical board updates are constrained by TFT level and by time since
+    # the current stage/round appeared.
+    use_hud_board_context: true
+    planning_min_round_age_s: 2.5
+    planning_max_round_age_s: 32.0
+
+    # A candidate snapshot with exactly `level` occupied cells is stronger
+    # evidence than independent stale cell states. Such a snapshot is applied
+    # atomically when its occupied evidence is sufficiently strong.
+    full_level_snapshot_max_uncertain: 14
+    full_level_snapshot_min_mean_fg: 0.60
+
+    # Match-local arena validity guard. References are fitted from static
+    # arena anchors across this match; lower shop/choice overlays are excluded.
+    use_arena_scene_guard: true
+    scene_guard_descriptor_size: 48
+    scene_guard_reference_fraction: 0.60
+    scene_guard_score_threshold: 0.12
+    scene_guard_anchor_threshold: 0.15
+    scene_guard_min_anchor_pass: 3
+
   min_event_confidence: 0.80
   temporal_confirmation_frames: 2
 
   hud:
-    producer_version: hud-state-tracker-0.5.1
-    input_observation_glob: hud-rapidocr-*.jsonl
+    producer_version: hud-state-tracker-0.10.0
+    input_observation_globs:
+      - hud-rapidocr-*.jsonl
+      - players-rapidocr-*.jsonl
+      - shop-rapidocr-*.jsonl
 
     # Missing observations are carried only while sufficiently fresh.
     max_age_seconds:
@@ -70,6 +246,8 @@ tracking:
       gold: 15.0
       level: 45.0
       xp: 15.0
+      hp: 60.0
+      shop: 45.0
 
     # Effective confidence decays linearly from the original observation
     # confidence to zero at max_age_seconds.
@@ -85,11 +263,14 @@ tracking:
       reject_xp_regression_same_requirement: true
 
     suspicious_confirmation_count: 2
+    hp_max_jump_without_confirmation: 25
+    hp_single_digit_min_confidence: 0.90
+    shop_change_min_confidence: 0.80
 
 
 events:
   hud:
-    producer_version: hud-event-detector-0.6.0
+    producer_version: hud-event-detector-0.10.0
     input_states_glob: hud-state-tracker-*.jsonl
 
     # Event existence may be certain even when the exact transition time lies
@@ -103,7 +284,7 @@ events:
 
 validation:
   hud:
-    producer_version: hud-event-validator-0.7.0
+    producer_version: hud-event-validator-0.10.0
     input_events_glob: hud-event-detector-*.jsonl
     input_states_glob: hud-state-tracker-*.jsonl
 
@@ -112,19 +293,23 @@ validation:
       level: 0.90
       xp: 0.85
       gold: 0.85
+      hp: 0.85
+      shop: 0.80
 
     min_target_confidence:
       stage: 0.90
       level: 0.90
       xp: 0.85
       gold: 0.85
+      hp: 0.85
+      shop: 0.80
 
     timing_uncertain_after_seconds: 20.0
     flag_non_adjacent_stage_transition: true
 
 reducer:
   hud:
-    producer_version: hud-game-state-reducer-0.7.1
+    producer_version: hud-game-state-reducer-0.10.0
     input_events_glob: hud-event-detector-*.jsonl
     input_validations_glob: hud-event-validator-*.jsonl
     input_states_glob: hud-state-tracker-*.jsonl
@@ -139,8 +324,173 @@ storage:
   states_format: parquet
   decisions_format: parquet
 
+actions:
+  fusion:
+    producer_version: semantic-action-fusion-0.14.6
+
+    # Current recorded UI shows Reroll=2 and Buy XP=4. These are configurable
+    # rather than hard-coded into contracts.
+    reroll_gold_cost: 2
+    xp_purchase_gold_cost: 4
+    xp_purchase_amount: 4
+
+    shop_refresh_min_changed_slots: 4
+    shop_refresh_min_occupied_slots: 4
+
+    # Action windows follow sparse evidence cadence. Wider windows are retained
+    # but explicitly marked as long/less atomic.
+    max_window_seconds: 20.0
+
+    emit_unknown_negative_econ: true
+
+decisions:
+  episodes:
+    producer_version: decision-episode-builder-0.15.0
+
+    # Sparse screenshots only support partial order between source windows.
+    # These thresholds control grouping into one observed planning burst, not
+    # reconstruction of missing click sequences.
+    max_idle_gap_seconds: 15.0
+    max_episode_duration_seconds: 45.0
+    split_on_stage_change: true
+    include_unknown_economy_only: true
+
+game:
+  # Prefer explicit per-match context (`--set` / `--patch`) or a previously
+  # persisted match game_context.json. Keep these null globally unless every
+  # analyzed match is known to share the same context.
+  set: null
+  patch: null
+  auto_infer_set: true
+
+game_data:
+  provider: riot_ddragon
+
+  # Pinned for the canonical 2026-08-12 match. The sync command can also
+  # resolve --version latest, but inference always records the exact catalog
+  # version/hash that was used.
+  version: "16.16.1"
+  locale: en_US
+  root_dir: data/game_data
+  timeout_seconds: 30.0
+  auto_use_active_catalog: true
+
+features:
+  episode_context:
+    # Stage 4.3: evidence-aligned player-state features for DecisionEpisodes.
+    # No strategic thresholds live here; this layer only exposes state/context.
+    producer_version: episode-context-builder-0.17.1
+
+
+  # Stage 5.0: evidence-aware ownership lower bounds from semantic actions.
+  # This does not claim a complete roster and does not assign units to board,
+  # bench or star level.
+  roster_evidence:
+    producer_version: roster-evidence-builder-0.20.1
+    min_confirmed_buy_confidence: 0.68
+    exclude_cost_conflict_from_confirmed: true
+    require_relevant_action_coverage: true
+
+
+  # Stage 5.1: export calibrated board/bench context crops for champion identity
+  # labeling/modeling. Acquisition history is included only as a causal,
+  # non-exhaustive prior and never as a label/current-ownership claim.
+  slot_identity_dataset:
+    producer_version: slot-identity-dataset-exporter-0.21.1
+    export_board: true
+    export_bench: true
+    selected_occupancy_statuses: [occupied]
+    min_raw_occupancy_confidence: 0.55
+    require_scene_valid: true
+
+
+  # Stage 5.2: temporal near-duplicate curation and QA queues. This operates
+  # only on exported observations; it does not infer champion identity.
+  slot_identity_curation:
+    producer_version: slot-identity-curator-0.21.2
+    max_temporal_gap_s: 15.0
+    dhash_size: 8
+    max_dhash_distance: 6
+    split_on_stage_change: true
+
+
+  # Stage 5.3: manual identity-label round-trip. External annotation tools are
+  # optional UI; imported project JSONL remains canonical truth.
+  slot_identity_labeling:
+    package_producer_version: slot-identity-label-package-0.21.3
+    import_producer_version: slot-identity-label-importer-0.21.3
+    allow_partial_import: true
+    require_catalog_for_champion_labels: true
+
+
+  # Stage 5.4: lightweight local categorical UI over labels.csv. No external
+  # service/database is required; every click is saved atomically to the
+  # existing 0.21.3 label package.
+  slot_identity_labeler:
+    producer_version: slot-identity-labeler-0.21.6
+    host: 127.0.0.1
+    port: 8765
+    open_browser: true
+    annotator: null
+
+
+  # Stage 5.5: human-label audit and downstream dataset policy. Human labels
+  # are semantic truth; occupancy tier is provenance/quality metadata.
+  slot_identity_human_audit:
+    producer_version: slot-identity-human-label-audit-0.21.7
+    primary_evidence_tiers: [trusted]
+    secondary_evidence_tiers: [supported]
+    recovered_candidate_tiers: [raw_candidate]
+    export_all_human_no_unit_as_occupancy_hard_negative: true
+    hotspot_min_labeled_groups: 1
+    hotspot_limit: 25
+
 analysis:
   enabled: true
+
+  # Stage 4.2 post-game analyzer. 0.16.1 explicitly separates expected
+  # sparse reconstruction uncertainty from hard data-quality contradictions.
+  # Thresholds remain descriptive landmarks, not TFT meta rules.
+  economy_tempo:
+    producer_version: economy-tempo-analyzer-0.16.1
+    large_spend_threshold: 20
+    low_gold_after_threshold: 10
+    roll_burst_max_count_threshold: 3
+
+    emit_unresolved_economy_spend: true
+    emit_uncertainty_only: false
+    emit_large_spend: true
+    emit_low_gold_review_candidate: true
+    emit_roll_activity: true
+    emit_xp_investment: true
+    emit_positioning_only: true
+
+
+  # Stage 4.4 context-aware review. These thresholds identify moments worth
+  # reviewing; they are not TFT meta prescriptions and do not emit grades.
+  context_review:
+    producer_version: context-review-analyzer-0.18.0
+
+    pressure_hp_threshold: 35
+    critical_hp_threshold: 20
+    near_elimination_hp_threshold: 10
+
+    economy_commitment_spend_threshold: 10
+    large_spend_under_pressure_threshold: 20
+    high_gold_under_pressure_threshold: 30
+
+    emit_economy_commitment_under_pressure: true
+    emit_low_hp_roll_activity: true
+    emit_low_hp_level_up: true
+    emit_high_gold_under_pressure: true
+    emit_near_elimination_activity: true
+    emit_trusted_board_below_capacity: true
+
+reports:
+  match_review:
+    producer_version: match-review-report-0.19.0
+    include_data_quality_cards: true
+
 
 realtime:
   enabled: false

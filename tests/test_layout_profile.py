@@ -15,7 +15,7 @@ PROFILE = Path("configs/layouts/tft_16_9_default.yaml")
 
 def test_16_9_profile_loads_and_matches_reference():
     registry = ROIRegistry.from_yaml(PROFILE)
-    assert registry.profile.profile_id == "tft_16_9_default_v4"
+    assert registry.profile.profile_id == "tft_16_9_default_v6"
     assert registry.profile.matches(1920, 1080)
     assert registry.profile.matches(1600, 900)
     assert "gold_value" in registry.names()

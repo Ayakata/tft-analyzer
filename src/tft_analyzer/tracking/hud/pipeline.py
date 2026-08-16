@@ -6,12 +6,15 @@ from pathlib import Path
 
 from tft_analyzer.core.models import Observation
 from tft_analyzer.storage import (
-    find_latest_observation_file,
+    find_latest_observation_files,
     iter_evidence_records,
     iter_observations,
 )
 
 from .tracker import HUDStateTracker, HUDTrackerSettings
+
+
+HUD_FIELDS = ("stage", "gold", "level", "xp", "hp", "shop")
 
 
 def _group_observations(
@@ -39,19 +42,36 @@ def track_match_hud(
     match_dir: Path | str,
     settings: HUDTrackerSettings,
     *,
-    observations_path: Path | str | None = None,
-    observation_glob: str = "hud-rapidocr-*.jsonl",
+    observations_paths: list[Path | str] | tuple[Path | str, ...] | None = None,
+    observation_globs: list[str] | tuple[str, ...] = (
+        "hud-rapidocr-*.jsonl",
+        "players-rapidocr-*.jsonl",
+        "shop-rapidocr-*.jsonl",
+    ),
 ) -> dict[str, object]:
     match_dir = Path(match_dir)
 
-    if observations_path is None:
-        observations_path = find_latest_observation_file(
+    if observations_paths is None:
+        resolved = find_latest_observation_files(
             match_dir,
-            pattern=observation_glob,
+            patterns=observation_globs,
         )
-    observations_path = Path(observations_path)
+    else:
+        resolved = [Path(path) for path in observations_paths]
 
-    observations = list(iter_observations(observations_path))
+    if not resolved:
+        raise FileNotFoundError(
+            f"No observation inputs resolved for {match_dir}"
+        )
+
+    observations = []
+    input_counts = {}
+
+    for path in resolved:
+        values = list(iter_observations(path))
+        observations.extend(values)
+        input_counts[str(path)] = len(values)
+
     by_evidence = _group_observations(observations)
 
     tracker = HUDStateTracker(settings)
@@ -120,8 +140,15 @@ def track_match_hud(
 
     decision_counts: dict[str, int] = defaultdict(int)
     decision_reasons: dict[str, int] = defaultdict(int)
-    field_decision_actions = {field: defaultdict(int) for field in ("stage", "gold", "level", "xp")}
-    field_decision_reasons = {field: defaultdict(int) for field in ("stage", "gold", "level", "xp")}
+
+    field_decision_actions = {
+        field: defaultdict(int)
+        for field in HUD_FIELDS
+    }
+    field_decision_reasons = {
+        field: defaultdict(int)
+        for field in HUD_FIELDS
+    }
     field_value_changes = defaultdict(int)
 
     for d in decisions:
@@ -129,12 +156,17 @@ def track_match_hud(
         decision_reasons[d.reason] += 1
         field_decision_actions[d.field][d.action] += 1
         field_decision_reasons[d.field][d.reason] += 1
-        if d.action == "accepted" and d.previous_value is not None and d.previous_value != d.observed_value:
+
+        if (
+            d.action == "accepted"
+            and d.previous_value is not None
+            and d.previous_value != d.observed_value
+        ):
             field_value_changes[d.field] += 1
 
     field_status_counts = {
         field: defaultdict(int)
-        for field in ("stage", "gold", "level", "xp")
+        for field in HUD_FIELDS
     }
 
     for state in states:
@@ -143,20 +175,70 @@ def track_match_hud(
             field_status_counts[field][tracked.status] += 1
 
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "tracker_version": settings.producer_version,
-        "input_observations_path": str(observations_path),
+        "input_observations_paths": [str(p) for p in resolved],
+        "input_observation_counts": input_counts,
         "input_observation_count": len(observations),
         "state_count": len(states),
         "decision_count": len(decisions),
         "decision_actions": dict(decision_counts),
         "decision_reasons": dict(decision_reasons),
-        "field_decision_actions": {field: dict(counts) for field, counts in field_decision_actions.items()},
-        "field_decision_reasons": {field: dict(counts) for field, counts in field_decision_reasons.items()},
-        "field_value_changes": {field: int(field_value_changes[field]) for field in ("stage", "gold", "level", "xp")},
+        "field_decision_actions": {
+            field: dict(counts)
+            for field, counts in field_decision_actions.items()
+        },
+        "field_decision_reasons": {
+            field: dict(counts)
+            for field, counts in field_decision_reasons.items()
+        },
+        "field_value_changes": {
+            field: int(field_value_changes[field])
+            for field in HUD_FIELDS
+        },
         "field_status_counts": {
             field: dict(counts)
             for field, counts in field_status_counts.items()
+        },
+        "hp_stabilization": {
+            "pending_count": int(
+                field_decision_actions["hp"].get("pending", 0)
+            ),
+            "rejected_count": int(
+                field_decision_actions["hp"].get("rejected", 0)
+            ),
+            "confirmed_change_count": int(field_value_changes["hp"]),
+            "large_jump_reason_count": int(
+                sum(
+                    count
+                    for reason, count in field_decision_reasons["hp"].items()
+                    if reason.startswith(
+                        "hp_large_jump_requires_confirmation"
+                    )
+                )
+            ),
+        },
+        "shop_stabilization": {
+            "accepted_count": int(
+                field_decision_actions["shop"].get("accepted", 0)
+            ),
+            "refreshed_count": int(
+                field_decision_actions["shop"].get("refreshed", 0)
+            ),
+            "pending_count": int(
+                field_decision_actions["shop"].get("pending", 0)
+            ),
+            "rejected_count": int(
+                field_decision_actions["shop"].get("rejected", 0)
+            ),
+            "confirmed_change_count": int(field_value_changes["shop"]),
+            "low_confidence_change_flags": int(
+                sum(
+                    count
+                    for reason, count in field_decision_reasons["shop"].items()
+                    if reason.startswith("shop_low_confidence_change")
+                )
+            ),
         },
         "states_path": str(states_path),
         "decisions_path": str(decisions_path),
