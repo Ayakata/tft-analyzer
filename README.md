@@ -22,7 +22,7 @@ Trajectory-first Teamfight Tactics recorder, post-game analyzer and future ML/RL
 - Stage 3.1.1: shop identity stabilization - complete
 - Stage 3.2: temporal shop state + primitive SHOP_CHANGED - implemented
 
-Current version: **0.21.7**
+Current version: **0.22.0**
 
 ## Install/update on Windows
 
@@ -1561,3 +1561,60 @@ tft-analyzer import-identity-labels <match_dir> \
 
 This validates a finished identity-labeling pass without requiring the separate
 `occupancy_qa` queue to be complete.
+
+
+## 0.22.0 Multi-match identity dataset & visual baseline
+
+Completed human-label audits can now be combined without copying their PNG
+crops:
+
+```text
+tft-analyzer build-identity-multimatch \
+  <match_dir_1> <match_dir_2> <match_dir_3>
+```
+
+The builder validates that every audit is complete, all matches use the same
+TFT set and pinned champion catalog, and every referenced representative crop
+exists. It preserves `primary`, `secondary` and `recovered_candidate`
+provenance in one manifest.
+
+Outputs:
+
+```text
+data/datasets/slot-identity-multimatch-0.22.0/
+  manifest.csv
+  classes.csv
+  folds.json
+  summary.json
+```
+
+Two protocols are generated:
+
+```text
+human_confirmed = primary + secondary + recovered_candidate
+clean           = primary + secondary
+```
+
+Both retain only classes represented in every input match. Fold definitions
+are leave-one-match-out: one complete match is validation data and every other
+match is training data. Random crop or visual-group splitting is forbidden.
+
+The first pixels-only visual baseline is MobileNetV3 Small:
+
+```text
+tft-analyzer train-identity-baseline \
+  data/datasets/slot-identity-multimatch-0.22.0 \
+  --protocol human_confirmed
+```
+
+PyTorch dependencies are optional:
+
+```text
+python -m pip install -e ".[ml]"
+```
+
+Training uses inverse-frequency class sampling, evidence-tier loss weights,
+ImageNet initialization by default and strict leave-one-match-out evaluation.
+Each fold writes its best checkpoint, epoch history and crop-level predictions.
+The final summary includes top-1, top-3, macro recall, per-class recall,
+confusion matrices and metrics split by evidence tier.

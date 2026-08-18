@@ -487,13 +487,16 @@ main {
 }
 .viewer {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 14px;
   border-right: 1px solid var(--border);
+  overflow: hidden;
 }
 .image-wrap {
-  flex: 1;
+  position: relative;
+  flex: 1 1 0;
   min-height: 0;
   display: grid;
   place-items: center;
@@ -503,6 +506,9 @@ main {
   overflow: hidden;
 }
 #image {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   max-width: 100%;
@@ -510,6 +516,7 @@ main {
   image-rendering: auto;
   object-fit: contain;
 }
+#image[hidden] { display: none; }
 .meta {
   min-height: 82px;
   margin-top: 10px;

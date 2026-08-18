@@ -110,6 +110,13 @@ from tft_analyzer.features import (
     prepare_identity_label_package,
     run_identity_labeler,
     audit_identity_labels,
+    build_multimatch_identity_dataset,
+    train_identity_baseline,
+)
+from tft_analyzer.features.board_geometry_editor import (
+    BoardGeometryEditorSettings,
+    load_board_geometry_draft,
+    run_board_geometry_editor,
 )
 from tft_analyzer.reports import (
     MatchReviewReportSettings,
@@ -742,7 +749,6 @@ def cmd_perceive_players(args):
     )
     print(f"[OK] JSONL:        {summary['observations_path']}")
     print(f"[OK] Attempts:     {summary['attempts_path']}")
-    print(f"[OK] Identity:     {summary['identity_path']}")
     print(f"[OK] Summary:      {summary['summary_path']}")
     return 0
 
@@ -751,7 +757,12 @@ def cmd_perceive_players(args):
 
 def _build_board_bench_recognizer(args, cfg):
     perception_cfg = cfg.get("perception", {})
-    bb_cfg = perception_cfg.get("board_bench", {})
+    bb_cfg = dict(perception_cfg.get("board_bench", {}))
+    geometry_draft = getattr(args, "geometry_draft", None)
+    if geometry_draft:
+        bb_cfg.update(
+            load_board_geometry_draft(geometry_draft)
+        )
     profile_path = Path(
         getattr(args, "profile", None)
         or "configs/layouts/tft_16_9_default.yaml"
@@ -857,6 +868,8 @@ def cmd_board_debug(args):
     result = debug["result"]
     print(f"[INFO] Image:       {image_path}")
     print(f"[INFO] Profile:     {recognizer.registry.profile.profile_id}")
+    if args.geometry_draft:
+        print(f"[INFO] Draft:       {Path(args.geometry_draft)}")
     board_geometry = [
         recognizer.board_box_geometry_at_reference(row)
         for row in range(recognizer.settings.board_rows)
@@ -904,6 +917,22 @@ def cmd_board_debug(args):
     print(f"[OK] Result:       {debug['result_path']}")
     print(f"[OK] Board cells:  {debug['board_dir']}")
     print(f"[OK] Bench slots:  {debug['bench_dir']}")
+    return 0
+
+
+def cmd_edit_board_geometry(args):
+    settings = BoardGeometryEditorSettings(
+        host=args.host,
+        port=args.port,
+        open_browser=not args.no_browser,
+    )
+    run_board_geometry_editor(
+        args.match_dir,
+        settings,
+        config_path=args.config,
+        draft_path=args.output,
+        initial_frame=args.frame,
+    )
     return 0
 
 
@@ -2231,6 +2260,101 @@ def cmd_audit_identity_labels(args):
     print(
         f"[OK] Summary:      {summary['summary_path']}"
     )
+    return 0
+
+
+def cmd_build_identity_multimatch(args):
+    kwargs = {}
+    if args.output_dir:
+        kwargs["output_dir"] = Path(args.output_dir)
+    summary = build_multimatch_identity_dataset(
+        [Path(value) for value in args.match_dirs],
+        force=bool(args.force),
+        **kwargs,
+    )
+
+    print(f"[INFO] Dataset:     {summary['producer_version']}")
+    print(
+        "[OK] Matches:     "
+        f"{summary['match_count']} "
+        + ", ".join(summary["match_ids"])
+    )
+    print(
+        "[OK] Champions:   "
+        f"groups={summary['visual_group_count']} "
+        f"classes={summary['champion_class_count']}"
+    )
+    tiers = summary["tier_counts"]
+    print(
+        "[INFO] Tiers:       "
+        f"primary={tiers.get('primary', 0)} "
+        f"secondary={tiers.get('secondary', 0)} "
+        f"recovered={tiers.get('recovered_candidate', 0)}"
+    )
+    for name, protocol in summary["protocols"].items():
+        print(
+            f"[INFO] Protocol:    {name} "
+            f"classes={protocol['class_count']} "
+            f"groups={protocol['group_count']} "
+            f"tiers={','.join(protocol['training_tiers'])}"
+        )
+    print(f"[OK] Manifest:     {summary['manifest_path']}")
+    print(f"[OK] Folds:        {summary['folds_path']}")
+    print(f"[OK] Summary:      {summary['summary_path']}")
+    return 0
+
+
+def cmd_train_identity_baseline(args):
+    def report_progress(value):
+        if value.get("event") == "fold_start":
+            print(
+                "[INFO] Fold "
+                f"{value['fold_index']}/{value['fold_count']}: "
+                f"holdout={value['validation_match_id']} "
+                f"train={value['training_group_count']} "
+                f"validation={value['validation_group_count']}",
+                flush=True,
+            )
+            return
+        print(
+            "[INFO]   epoch "
+            f"{value['epoch']:02d} "
+            f"loss={value['training_loss']:.4f} "
+            f"acc={value['validation_accuracy']:.3f} "
+            f"top3={value['validation_top3_accuracy']:.3f} "
+            f"macro={value['validation_macro_recall']:.3f}",
+            flush=True,
+        )
+
+    summary = train_identity_baseline(
+        Path(args.dataset_dir),
+        protocol=args.protocol,
+        output_dir=(Path(args.output_dir) if args.output_dir else None),
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        image_size=args.image_size,
+        learning_rate=args.learning_rate,
+        seed=args.seed,
+        device=args.device,
+        pretrained=not bool(args.no_pretrained),
+        force=bool(args.force),
+        progress=report_progress,
+    )
+    metrics = summary["aggregate_metrics"]
+    print(
+        "[OK] Baseline:    "
+        f"protocol={summary['protocol']} "
+        f"classes={summary['class_count']} "
+        f"matches={summary['match_count']}"
+    )
+    print(
+        "[OK] Aggregate:   "
+        f"top1={metrics['accuracy']:.3f} "
+        f"top3={metrics['top3_accuracy']:.3f} "
+        f"macro_recall={metrics['macro_recall']:.3f} "
+        f"n={metrics['sample_count']}"
+    )
+    print(f"[OK] Summary:      {summary['summary_path']}")
     return 0
 
 
@@ -3853,8 +3977,28 @@ def build_parser():
     p.add_argument("image", help="Captured TFT frame PNG/JPEG.")
     p.add_argument("--config", default="configs/default.yaml")
     p.add_argument("--profile", default="configs/layouts/tft_16_9_default.yaml")
+    p.add_argument(
+        "--geometry-draft",
+        help="Optional board-geometry-editor draft JSON applied over config.",
+    )
     p.add_argument("--output")
     p.set_defaults(func=cmd_board_debug)
+
+    p = sub.add_parser(
+        "edit-board-geometry",
+        help="Interactively calibrate board/bench context and footprint geometry.",
+    )
+    p.add_argument("match_dir")
+    p.add_argument("--config", default="configs/default.yaml")
+    p.add_argument(
+        "--frame",
+        help="Initial evidence-frame filename or path. Other match frames remain selectable.",
+    )
+    p.add_argument("--output", help="Optional draft JSON path.")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8766)
+    p.add_argument("--no-browser", action="store_true")
+    p.set_defaults(func=cmd_edit_board_geometry)
 
     p = sub.add_parser(
         "perceive-board",
@@ -3863,6 +4007,10 @@ def build_parser():
     p.add_argument("match_dir")
     p.add_argument("--config", default="configs/default.yaml")
     p.add_argument("--profile", default="configs/layouts/tft_16_9_default.yaml")
+    p.add_argument(
+        "--geometry-draft",
+        help="Optional board-geometry-editor draft JSON applied over config.",
+    )
     p.add_argument("--stride", type=int, default=1)
     p.add_argument("--limit", type=int)
     p.set_defaults(func=cmd_perceive_board)
@@ -4110,6 +4258,65 @@ def build_parser():
         help="Replace an existing human-label audit artifact.",
     )
     p.set_defaults(func=cmd_audit_identity_labels)
+
+    p = sub.add_parser(
+        "build-identity-multimatch",
+        help=(
+            "Combine completed human-label audits from multiple matches into "
+            "one provenance-preserving identity manifest and leave-one-match-"
+            "out fold definitions."
+        ),
+    )
+    p.add_argument(
+        "match_dirs",
+        nargs="+",
+        help="Two or more fully audited match directories.",
+    )
+    p.add_argument(
+        "--output-dir",
+        help=(
+            "Optional output directory. Default: "
+            "data/datasets/slot-identity-multimatch-0.22.0."
+        ),
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing generated multimatch dataset.",
+    )
+    p.set_defaults(func=cmd_build_identity_multimatch)
+
+    p = sub.add_parser(
+        "train-identity-baseline",
+        help=(
+            "Train a MobileNetV3 visual identity baseline with strict "
+            "leave-one-match-out cross-validation."
+        ),
+    )
+    p.add_argument("dataset_dir")
+    p.add_argument(
+        "--protocol",
+        choices=["human_confirmed", "clean"],
+        default="human_confirmed",
+    )
+    p.add_argument("--output-dir")
+    p.add_argument("--epochs", type=int, default=8)
+    p.add_argument("--batch-size", type=int, default=64)
+    p.add_argument("--image-size", type=int, default=128)
+    p.add_argument("--learning-rate", type=float, default=3e-4)
+    p.add_argument("--seed", type=int, default=1729)
+    p.add_argument("--device", default="auto")
+    p.add_argument(
+        "--no-pretrained",
+        action="store_true",
+        help="Initialize MobileNetV3 without ImageNet weights.",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing generated baseline directory.",
+    )
+    p.set_defaults(func=cmd_train_identity_baseline)
 
     p = sub.add_parser(
         "curate-slot-identity-dataset",

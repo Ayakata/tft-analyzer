@@ -109,15 +109,15 @@ perception:
     # Native TFT cyan placement grid. Rows alternate horizontal offset and
     # widen toward the camera. Values are normalized centers of c0/c6.
     board_row_left:
-      - [0.293, 0.414]
-      - [0.319, 0.478]
-      - [0.278, 0.549]
-      - [0.304, 0.625]
+      - [0.290803, 0.406448]
+      - [0.316409, 0.471092]
+      - [0.278648, 0.544394]
+      - [0.306591, 0.604275]
     board_row_right:
-      - [0.651, 0.414]
-      - [0.688, 0.478]
-      - [0.663, 0.549]
-      - [0.701, 0.625]
+      - [0.652295, 0.404789]
+      - [0.685409, 0.471092]
+      - [0.663212, 0.538860]
+      - [0.703591, 0.604275]
 
     bench_left: [0.230, 0.745]
     bench_right: [0.715, 0.745]
@@ -129,13 +129,13 @@ perception:
 
     # Real-frame calibration: keep lattice centres, scale sampling windows with
     # perspective instead of using the same rectangle for all four rows.
-    board_half_width_px_at_1920_by_row: [50, 56, 62, 68]
-    board_up_px_at_1080_by_row: [68, 72, 78, 84]
+    board_half_width_px_at_1920_by_row: [56, 56, 62, 68]
+    board_up_px_at_1080_by_row: [99, 81, 83, 92]
     board_down_px_at_1080_by_row: [26, 28, 30, 32]
 
     # Native hex footprint for slot semantics/debug. Context crops above remain
     # rectangular and taller so differently sized champions may leave the cell.
-    board_hex_half_width_px_at_1920_by_row: [52, 55, 58, 61]
+    board_hex_half_width_px_at_1920_by_row: [52, 55, 57, 61]
     board_hex_half_height_px_at_1080_by_row: [38, 41, 45, 48]
 
     # Bench anchor is calibrated to the actual planning-phase slot platform.
@@ -146,7 +146,7 @@ perception:
     # - context   = taller crop used for occupancy features and future identity.
     bench_half_width_px_at_1920: 60
     bench_up_px_at_1080: 142
-    bench_down_px_at_1080: 12
+    bench_down_px_at_1080: 27
     bench_footprint_half_width_px_at_1920: 36
     bench_footprint_up_px_at_1080: 64
     bench_footprint_down_px_at_1080: 16

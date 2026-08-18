@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import time
 
 from tft_analyzer.features.slot_identity_curation.models import (
     CuratedSlotVisualGroup,
@@ -21,6 +22,26 @@ from .models import (
     LabeledSlotVisualGroup,
     SlotIdentityLabelingSettings,
 )
+
+
+def _replace_directory_with_retry(
+    source: Path,
+    destination: Path,
+    *,
+    attempts: int = 8,
+    initial_delay_s: float = 0.05,
+) -> None:
+    """Publish a generated directory despite brief Windows file locks."""
+    delay_s = initial_delay_s
+    for attempt in range(attempts):
+        try:
+            source.replace(destination)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(delay_s)
+            delay_s = min(delay_s * 2.0, 0.5)
 
 
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
@@ -735,8 +756,9 @@ def prepare_identity_label_package(
         parents=True,
         exist_ok=True,
     )
-    temp_dir.replace(
-        output_dir
+    _replace_directory_with_retry(
+        temp_dir,
+        output_dir,
     )
     return package
 
@@ -922,6 +944,27 @@ def _champion_catalog_index(
             by_normalized
         ),
     )
+
+
+def _primary_catalog_candidate(
+    candidates: list,
+):
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # Data Dragon may publish a technical TraitClone beside the playable
+    # champion with the same set, display name, tier and art. Human labels
+    # describe the champion, so resolve that duplicate to the playable entry.
+    playable = [
+        entry
+        for entry in candidates
+        if not entry.champion_id.casefold().endswith(
+            "_traitclone"
+        )
+    ]
+    if len(playable) == 1:
+        return playable[0]
+    return None
 
 
 def _write_labeled_jsonl(
@@ -1255,16 +1298,14 @@ def import_identity_labels(
                 )
             )
             if catalog_by_normalized:
-                if len(
+                entry = _primary_catalog_candidate(
                     candidates
-                ) != 1:
+                )
+                if entry is None:
                     catalog_error_ids.append(
                         group.visual_group_id
                     )
                     continue
-                entry = candidates[
-                    0
-                ]
                 champion_label = (
                     entry.normalized_name
                 )
@@ -1784,8 +1825,9 @@ def import_identity_labels(
         parents=True,
         exist_ok=True,
     )
-    temp_dir.replace(
-        output_dir
+    _replace_directory_with_retry(
+        temp_dir,
+        output_dir,
     )
 
     return summary

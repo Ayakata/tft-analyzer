@@ -61,6 +61,10 @@ __all__ = [
     "IdentityTrainingTier",
     "SlotIdentityHumanAuditSettings",
     "audit_identity_labels",
+    "MULTIMATCH_PRODUCER_VERSION",
+    "build_multimatch_identity_dataset",
+    "BASELINE_PRODUCER_VERSION",
+    "train_identity_baseline",
 ]
 
 
@@ -116,4 +120,16 @@ from .slot_identity_audit import (
     IdentityTrainingTier,
     SlotIdentityHumanAuditSettings,
     audit_identity_labels,
+)
+
+
+from .slot_identity_multimatch import (
+    MULTIMATCH_PRODUCER_VERSION,
+    build_multimatch_identity_dataset,
+)
+
+
+from .slot_identity_baseline import (
+    BASELINE_PRODUCER_VERSION,
+    train_identity_baseline,
 )

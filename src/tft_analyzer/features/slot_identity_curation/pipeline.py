@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import time
 
 from PIL import Image
 
@@ -21,6 +22,29 @@ from .models import (
 
 
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+
+
+def _replace_directory_with_retry(
+    source: Path,
+    destination: Path,
+    *,
+    attempts: int = 8,
+    initial_delay_s: float = 0.05,
+) -> None:
+    """Finish an atomic directory publish despite brief Windows file locks."""
+    delay_s = initial_delay_s
+    for attempt in range(attempts):
+        try:
+            source.replace(destination)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(delay_s)
+            delay_s = min(
+                delay_s * 2.0,
+                0.5,
+            )
 
 
 def _version_key(path: Path):
@@ -1127,8 +1151,9 @@ def curate_slot_identity_dataset(
         parents=True,
         exist_ok=True,
     )
-    temp_dir.replace(
-        output_dir
+    _replace_directory_with_retry(
+        temp_dir,
+        output_dir,
     )
 
     return summary

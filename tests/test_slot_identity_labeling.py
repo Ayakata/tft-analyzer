@@ -13,6 +13,7 @@ from tft_analyzer.features.slot_identity_labeling import (
     import_identity_labels,
     prepare_identity_label_package,
 )
+from tft_analyzer.features.slot_identity_labeling import pipeline
 
 
 def _group(
@@ -278,6 +279,37 @@ def _edit_labels(path, assignments):
         writer.writerows(
             rows
         )
+
+
+def test_label_artifact_publish_retries_transient_permission_error(
+    tmp_path,
+    monkeypatch,
+):
+    source = tmp_path / "labels.tmp"
+    destination = tmp_path / "labels"
+    source.mkdir()
+    (source / "package.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+    original_replace = Path.replace
+    calls = 0
+
+    def flaky_replace(path, target):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise PermissionError("transient Windows directory lock")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", flaky_replace)
+    monkeypatch.setattr(pipeline.time, "sleep", lambda _seconds: None)
+
+    pipeline._replace_directory_with_retry(source, destination)
+
+    assert calls == 3
+    assert not source.exists()
+    assert (destination / "package.json").is_file()
 
 
 def test_prepare_package_copies_groups_and_pinned_set_schema(tmp_path):
@@ -557,6 +589,85 @@ def test_unknown_champion_label_is_rejected_by_pinned_set_catalog(tmp_path):
             ),
             catalog_path=catalog,
         )
+
+
+def test_trait_clone_duplicate_resolves_to_playable_catalog_entry(tmp_path):
+    match = tmp_path / "match"
+    curation = _write_curation(
+        match
+    )
+    catalog = _write_catalog(
+        tmp_path
+    )
+    payload = json.loads(
+        catalog.read_text(
+            encoding="utf-8"
+        )
+    )
+    payload["champions"].extend(
+        [
+            {
+                "champion_id": "TFT17_MissFortune",
+                "name": "Miss Fortune",
+                "normalized_name": "missfortune",
+                "tier": 3,
+            },
+            {
+                "champion_id": "TFT17_MissFortune_TraitClone",
+                "name": "Miss Fortune",
+                "normalized_name": "missfortune",
+                "tier": 3,
+            },
+        ]
+    )
+    catalog.write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+    package = prepare_identity_label_package(
+        match,
+        SlotIdentityLabelingSettings(),
+        curation_dir=curation,
+        catalog_path=catalog,
+    )
+    _edit_labels(
+        package["labels_path"],
+        {
+            "g1": {
+                "target_type": "champion",
+                "champion_label": "Miss Fortune",
+                "label_status": "human_labeled",
+            },
+        },
+    )
+
+    summary = import_identity_labels(
+        match,
+        SlotIdentityLabelingSettings(),
+        label_package_dir=Path(
+            package["output_dir"]
+        ),
+        catalog_path=catalog,
+    )
+    values = [
+        json.loads(line)
+        for line in Path(
+            summary["labeled_visual_groups_path"]
+        ).read_text(
+            encoding="utf-8"
+        ).splitlines()
+        if line.strip()
+    ]
+    miss_fortune = next(
+        value
+        for value in values
+        if value["visual_group_id"] == "g1"
+    )
+
+    assert miss_fortune["champion_label"] == "missfortune"
+    assert miss_fortune["champion_id"] == "TFT17_MissFortune"
+    assert miss_fortune["champion_catalog_validated"] is True
 
 
 def test_no_unit_in_identity_queue_is_conflict_not_auto_negative(tmp_path):

@@ -8,6 +8,7 @@ from tft_analyzer.features.slot_identity_curation import (
     SlotIdentityCurationSettings,
     curate_slot_identity_dataset,
 )
+from tft_analyzer.features.slot_identity_curation import pipeline
 from tft_analyzer.features.slot_identity_dataset import (
     SlotIdentityObservation,
 )
@@ -200,6 +201,57 @@ def _load_groups(path):
         ).splitlines()
         if line.strip()
     ]
+
+
+def test_directory_publish_retries_transient_permission_error(
+    tmp_path,
+    monkeypatch,
+):
+    source = tmp_path / "curation.tmp"
+    destination = tmp_path / "curation"
+    source.mkdir()
+    (source / "summary.json").write_text(
+        "{}",
+        encoding="utf-8",
+    )
+
+    original_replace = Path.replace
+    calls = 0
+
+    def flaky_replace(path, target):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise PermissionError(
+                "transient Windows directory lock"
+            )
+        return original_replace(
+            path,
+            target,
+        )
+
+    monkeypatch.setattr(
+        Path,
+        "replace",
+        flaky_replace,
+    )
+    monkeypatch.setattr(
+        pipeline.time,
+        "sleep",
+        lambda _seconds: None,
+    )
+
+    pipeline._replace_directory_with_retry(
+        source,
+        destination,
+    )
+
+    assert calls == 3
+    assert not source.exists()
+    assert (
+        destination
+        / "summary.json"
+    ).is_file()
 
 
 def test_curation_groups_near_duplicates_and_separates_quality_queues(tmp_path):

@@ -310,6 +310,9 @@ def test_http_api_serves_ui_image_and_persists_click(tmp_path):
         assert "TFT Identity Labeler" in html
         assert "No unit" in html
         assert "champions" in html
+        assert "flex: 1 1 0;" in html
+        assert "position: absolute;" in html
+        assert "object-fit: contain;" in html
 
         state = json.loads(
             _urlopen(
